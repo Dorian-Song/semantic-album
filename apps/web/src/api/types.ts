@@ -33,6 +33,7 @@ export interface PhotoDetail extends PhotoSummary {
     tags: string[];
     provider: string | null;
     model: string | null;
+    enrichment: { categories: string[]; keywords: string[]; rowId: number; storedAt: string } | null;
   } | null;
   albums: AlbumRef[];
   processing: Partial<Record<TaskKind, { state: 'pending' | 'running' | 'succeeded' | 'failed'; error: string | null; provider: string | null }>>;

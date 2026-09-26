@@ -1,0 +1,385 @@
+{
+  "name": "Album enrichment",
+  "nodes": [
+    {
+      "id": "c32f8ee1-75af-4756-aab2-4f040a6d9714",
+      "name": "Receive caption",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "1bc9db1d-0056-4d61-b7ac-60116070e095",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "album-enrichment",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MEQnGHUOhOdDjpA6",
+          "name": "Album webhook secret"
+        }
+      }
+    },
+    {
+      "id": "56aa82bf-7acf-48c7-9c53-ac3a5063af3e",
+      "name": "Validate and normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Album enrichment — validate and normalise one photo description sent by the Album backend.\n// Runs once for each item. Input: the webhook body {assetId, taskId, revision, caption, tags}.\n// Output: {valid: false, error} or {valid: true, row}, where row is the Data Table record.\n// Only text and IDs arrive here; photos never leave the user's computer.\n\nconst STOP_WORDS = new Set([\n  'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'has', 'have', 'in', 'into', 'is', 'it', 'its',\n  'of', 'on', 'or', 'over', 'the', 'their', 'there', 'this', 'that', 'to', 'under', 'with', 'while', 'near',\n  'appears', 'visible', 'shows', 'showing', 'image', 'photo', 'picture', 'features', 'featuring', 'some', 'two',\n  'three', 'one', 'several', 'large', 'small', 'background', 'foreground', 'left', 'right', 'side',\n]);\n\n// Broad categories derived from tags and caption words, so \"animals\" finds a photo tagged \"dog\".\nconst CATEGORIES = {\n  people: ['person', 'people', 'man', 'men', 'woman', 'women', 'child', 'children', 'boy', 'girl', 'baby', 'crowd', 'family', 'portrait', 'player', 'players'],\n  animals: ['dog', 'dogs', 'cat', 'cats', 'bird', 'birds', 'horse', 'horses', 'cow', 'cows', 'sheep', 'elephant', 'elephants', 'bear', 'zebra', 'giraffe', 'giraffes', 'animal', 'animals', 'pet', 'puppy', 'kitten'],\n  food: ['food', 'pizza', 'sandwich', 'cake', 'donut', 'donuts', 'fruit', 'banana', 'bananas', 'apple', 'orange', 'broccoli', 'carrot', 'meal', 'dish', 'plate', 'bread', 'coffee', 'dessert', 'breakfast', 'dinner', 'lunch', 'vegetables'],\n  nature: ['tree', 'trees', 'forest', 'mountain', 'mountains', 'beach', 'sea', 'ocean', 'lake', 'river', 'field', 'grass', 'flower', 'flowers', 'sky', 'sunset', 'sunrise', 'snow', 'hill', 'hills', 'landscape', 'garden', 'park'],\n  city: ['street', 'road', 'city', 'building', 'buildings', 'traffic', 'sidewalk', 'downtown', 'urban', 'bridge', 'crosswalk', 'intersection'],\n  indoor: ['room', 'kitchen', 'bedroom', 'bathroom', 'living', 'office', 'table', 'desk', 'couch', 'sofa', 'bed', 'indoor', 'indoors', 'restaurant'],\n  vehicles: ['car', 'cars', 'bus', 'truck', 'train', 'motorcycle', 'bicycle', 'bike', 'boat', 'airplane', 'plane', 'vehicle', 'vehicles', 'tram'],\n  sports: ['sport', 'sports', 'tennis', 'baseball', 'soccer', 'football', 'skateboard', 'skateboarding', 'surfing', 'surfboard', 'skiing', 'ski', 'snowboard', 'frisbee', 'kite', 'game', 'match'],\n  text: ['text', 'sign', 'signs', 'writing', 'label', 'poster', 'banner', 'reads', 'reading', 'words'],\n  // \"dark\" and \"lights\" are left out: captions use them for colours and lamps far more than for night scenes.\n  night: ['night', 'nighttime', 'evening', 'neon', 'moonlight', 'starry'],\n};\n\nconst body = $json.body ?? {};\nconst fail = (error) => ({ json: { valid: false, error } });\n\nif (typeof body.assetId !== 'string' || !/^[\\w-]{1,64}$/.test(body.assetId)) return fail('assetId must be an ID string');\nif (!Number.isInteger(body.revision) || body.revision < 1) return fail('revision must be a positive integer');\nif (typeof body.caption !== 'string' || body.caption.trim() === '') return fail('caption must be a non-empty string');\nif (body.caption.length > 2000) return fail('caption is longer than 2000 characters');\nif (body.tags !== undefined && !Array.isArray(body.tags)) return fail('tags must be an array of strings');\n\nlet caption = body.caption.replace(/\\s+/g, ' ').trim();\ncaption = caption.charAt(0).toUpperCase() + caption.slice(1);\nif (!/[.!?\"')]$/.test(caption)) caption += '.';\n\nconst tags = [\n  ...new Set(\n    (body.tags ?? [])\n      .filter((t) => typeof t === 'string')\n      .map((t) => t.toLowerCase().replace(/[^\\p{L}\\p{N}\\s-]/gu, '').replace(/\\s+/g, ' ').trim())\n      .filter((t) => t.length > 0 && t.length <= 40 && !STOP_WORDS.has(t)),\n  ),\n].slice(0, 15);\n\nconst words = caption.toLowerCase().match(/\\p{L}[\\p{L}'-]*/gu) ?? [];\nconst keywords = [...new Set(words.filter((w) => w.length >= 3 && !STOP_WORDS.has(w) && !tags.includes(w)))].slice(0, 12);\nconst vocabulary = new Set([...tags.flatMap((t) => t.split(' ')), ...words]);\nconst categories = Object.entries(CATEGORIES)\n  .filter(([, members]) => members.some((m) => vocabulary.has(m)))\n  .map(([name]) => name);\n\nreturn {\n  json: {\n    valid: true,\n    row: {\n      key: `${body.assetId}:${body.revision}`,\n      assetId: body.assetId,\n      revision: body.revision,\n      caption,\n      tags: tags.join(', '),\n      keywords: keywords.join(', '),\n      categories: categories.join(', '),\n      wordCount: words.length,\n    },\n  },\n};\n"
+      }
+    },
+    {
+      "id": "1fafe86a-b9b3-4895-ab5f-66ec8a7ba20e",
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e14b29ce-ee34-4cd9-bf76-b03be61c5dab",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "f82ec2e0-8d2f-40bf-87d3-ccb30882d7ac",
+      "name": "Build row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -100
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// The Data Table record, column for column.\nreturn { json: $json.row };"
+      }
+    },
+    {
+      "id": "1046e11f-22b7-40ea-90c3-edeaf52bc1a6",
+      "name": "Upsert enrichment row",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        -100
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "J4oFXo3H1KeKIudM"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "key",
+              "condition": "eq",
+              "keyValue": "={{ $json.key }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5df7abd3-51dc-4c84-8a98-9f0ba8bf9713",
+      "name": "Read row back",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        -100
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "J4oFXo3H1KeKIudM"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "key",
+              "condition": "eq",
+              "keyValue": "={{ $('Build row').item.json.key }}"
+            }
+          ]
+        },
+        "returnAll": false,
+        "limit": 1
+      }
+    },
+    {
+      "id": "66c37767-6929-4532-ae2b-dc02635f8f9f",
+      "name": "Return enrichment",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1320,
+        -100
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ key: $json.key, assetId: $json.assetId, revision: $json.revision, caption: $json.caption, tags: ($json.tags ? $json.tags.split(', ') : []), keywords: ($json.keywords ? $json.keywords.split(', ') : []), categories: ($json.categories ? $json.categories.split(', ') : []), wordCount: $json.wordCount, rowId: $json.id, storedAt: $json.updatedAt }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "29a1491a-56f9-4a27-9a29-93d1a0664db5",
+      "name": "Reject invalid request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        660,
+        100
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ error: $json.error }) }}",
+        "options": {
+          "responseCode": 422
+        }
+      }
+    },
+    {
+      "id": "ac890102-c9b2-48ff-9c33-0aec92af7ffb",
+      "name": "Receive purge request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        320
+      ],
+      "webhookId": "1deced1b-fb51-4e0b-be0a-104994c8f9d0",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "album-enrichment/purge",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MEQnGHUOhOdDjpA6",
+          "name": "Album webhook secret"
+        }
+      }
+    },
+    {
+      "id": "8a36630a-a8f1-4bd7-ac7f-816eace5668b",
+      "name": "Validate purge",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        320
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Album enrichment purge — the backend asks to delete the rows of a photo that left the library.\n// Runs once for each item. Input: the webhook body {assetId}.\nconst assetId = $json.body?.assetId;\nif (typeof assetId !== 'string' || !/^[\\w-]{1,64}$/.test(assetId)) {\n  throw new Error('assetId must be an ID string');\n}\nreturn { json: { assetId } };\n"
+      }
+    },
+    {
+      "id": "487e07c7-c1e7-401a-8f7d-3a590470dbcf",
+      "name": "Delete photo rows",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        440,
+        320
+      ],
+      "alwaysOutputData": true,
+      "parameters": {
+        "resource": "row",
+        "operation": "deleteRows",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "J4oFXo3H1KeKIudM"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "assetId",
+              "condition": "eq",
+              "keyValue": "={{ $json.assetId }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "e0ddaadf-6b84-4a50-a5b7-50110e3d6918",
+      "name": "Return purge result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        660,
+        320
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ assetId: $('Validate purge').first().json.assetId, deleted: $input.all().filter(i => i.json.id !== undefined).length }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Receive caption": {
+      "main": [
+        [
+          {
+            "node": "Validate and normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate and normalize": {
+      "main": [
+        [
+          {
+            "node": "Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid?": {
+      "main": [
+        [
+          {
+            "node": "Build row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject invalid request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build row": {
+      "main": [
+        [
+          {
+            "node": "Upsert enrichment row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert enrichment row": {
+      "main": [
+        [
+          {
+            "node": "Read row back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read row back": {
+      "main": [
+        [
+          {
+            "node": "Return enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive purge request": {
+      "main": [
+        [
+          {
+            "node": "Validate purge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate purge": {
+      "main": [
+        [
+          {
+            "node": "Delete photo rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete photo rows": {
+      "main": [
+        [
+          {
+            "node": "Return purge result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

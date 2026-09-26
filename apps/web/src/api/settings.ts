@@ -33,4 +33,6 @@ export type TestResult = { ok: true; model: string; caption: string; tags: strin
 
 export const getSettings = () => api<Settings>('/api/settings');
 export const updateSettings = (u: SettingsUpdate) => api<Settings>('/api/settings', { method: 'PUT', body: u });
+export type N8nTestResult = { ok: true; rowId: number; caption: string; categories: string[]; cleanedUp: number } | { ok: false; message: string };
+export const testN8n = () => api<N8nTestResult>('/api/settings/test-n8n', { method: 'POST' });
 export const testCaption = (provider: 'deepseek' | 'openai') => api<TestResult>('/api/settings/test-caption', { method: 'POST', body: { provider } });

@@ -11,6 +11,7 @@ await reconcileStorage(services.ctx, app.log);
 services.imports.recover();
 services.tasks.start();
 services.gc.start();
+services.purge.start();
 
 async function shutdown(signal: string): Promise<void> {
   app.log.info({ signal }, 'shutting down');

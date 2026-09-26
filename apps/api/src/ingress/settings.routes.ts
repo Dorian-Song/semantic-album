@@ -4,6 +4,7 @@ import type { Services } from '../app.js';
 import { captionWithDeepSeek } from '../adapters/deepseek-responses.js';
 import { captionWithOpenAI } from '../adapters/openai-responses.js';
 import type { CaptionImage } from '../adapters/vision-provider.js';
+import { postEnrichment, postPurge } from '../egress/n8n-client.js';
 import type { SettingsUpdate } from '../settings/settings-service.js';
 import { badRequest } from '../shared/errors.js';
 
@@ -46,7 +47,7 @@ async function testImage(): Promise<CaptionImage> {
   return { mime: 'image/png', data: await sharp(Buffer.from(svg)).png().toBuffer() };
 }
 
-export function registerSettingsRoutes(app: FastifyInstance, { settings, tasks, ctx }: Services): void {
+export function registerSettingsRoutes(app: FastifyInstance, { settings, tasks, ctx, purge }: Services): void {
   app.get('/api/settings', async () => ({
     ...settings.getPublic(),
     imageDecoders: { heifDec: !!ctx.tools.heifDec, ffmpeg: !!ctx.tools.ffmpeg, magick: !!ctx.tools.magick },
@@ -56,6 +57,26 @@ export function registerSettingsRoutes(app: FastifyInstance, { settings, tasks, 
     const updated = settings.update(req.body);
     tasks.resume(); // a new key or re-enabled feature should not wait out an old pause
     return updated;
+  });
+
+  /** Round trip through the n8n workflow with a test caption: Data Table write, read back, then delete. */
+  app.post('/api/settings/test-n8n', async () => {
+    const { webhookUrl, secret } = settings.get().n8n;
+    if (!webhookUrl || !secret) throw badRequest('missing_n8n', 'Save the n8n webhook URL and secret first');
+    try {
+      const r = await postEnrichment(webhookUrl, secret, {
+        assetId: 'album-connection-test',
+        taskId: 'connection-test',
+        revision: 1,
+        caption: 'a brown dog sleeping on a sofa in a living room',
+        tags: ['Dog', 'sofa', 'living room'],
+      });
+      const cleanup = await postPurge(webhookUrl, secret, 'album-connection-test');
+      void purge.runOnce();
+      return { ok: true, rowId: r.rowId, caption: r.caption, categories: r.categories, cleanedUp: cleanup.deleted };
+    } catch (err) {
+      return { ok: false, message: err instanceof Error ? err.message : String(err) };
+    }
   });
 
   /** Captions a generated test picture with the saved settings of one provider. Sends only that picture. */

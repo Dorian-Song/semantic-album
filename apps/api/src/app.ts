@@ -10,6 +10,7 @@ import { migrate } from './db/migrate.js';
 import { ImportService } from './imports/import-service.js';
 import { createHttpServer, registerRoutes, type LoggerOption } from './ingress/http.js';
 import { PhotoQueries } from './photos/photo-queries.js';
+import { EnrichmentWorker, PurgeWorker } from './automation/enrichment-service.js';
 import { CaptionWorker } from './processing/caption-worker.js';
 import { TaskService, type TaskOptions } from './processing/task-service.js';
 import { SettingsService } from './settings/settings-service.js';
@@ -27,6 +28,7 @@ export interface Services {
   imports: ImportService;
   tasks: TaskService;
   settings: SettingsService;
+  purge: PurgeWorker;
   gc: GarbageCollector;
 }
 
@@ -51,6 +53,7 @@ export async function createApp(
   const tasks = new TaskService(ctx, app.log, taskOptions);
   const settings = new SettingsService(db);
   tasks.register('caption', new CaptionWorker(ctx, settings, tasks, tasks.maxAttempts));
+  tasks.register('enrichment', new EnrichmentWorker(ctx, settings));
   const assets = new AssetService(ctx, albums, tasks);
   const services: Services = {
     ctx,
@@ -61,12 +64,14 @@ export async function createApp(
     imports: new ImportService(ctx, albums, assets, app.log),
     tasks,
     settings,
+    purge: new PurgeWorker(ctx, settings, app.log),
     gc: new GarbageCollector(ctx, app.log),
   };
   await registerRoutes(app, services);
   app.addHook('onClose', async () => {
     services.gc.stop();
     services.tasks.stop();
+    services.purge.stop();
     db.close();
   });
   return { app, services };

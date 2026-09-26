@@ -44,6 +44,16 @@ export function DescriptionBlock({ photo, onEdit }: { photo: PhotoDetail; onEdit
           ))}
         </ul>
       )}
+      {d?.enrichment && d.enrichment.categories.length > 0 && (
+        <p className="muted small">
+          Categories from n8n: {d.enrichment.categories.join(', ')}
+        </p>
+      )}
+      {photo.processing.enrichment?.state === 'failed' && (
+        <p className="muted small" role="status">
+          n8n enrichment failed: {photo.processing.enrichment.error ?? 'unknown error'}
+        </p>
+      )}
       {busy && (
         <p className="description-status" role="status">
           {reason ? (

@@ -887,3 +887,10 @@ a {
   color: var(--color-muted);
   font-style: italic;
 }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+  background: var(--color-sidebar);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
