@@ -11,7 +11,12 @@ import { ImportService } from './imports/import-service.js';
 import { createHttpServer, registerRoutes, type LoggerOption } from './ingress/http.js';
 import { PhotoQueries } from './photos/photo-queries.js';
 import { EnrichmentWorker, PurgeWorker } from './automation/enrichment-service.js';
+import { VllmEmbedder } from './inference/vllm-client.js';
+import type { Embedder } from './inference/embedder.js';
 import { CaptionWorker } from './processing/caption-worker.js';
+import { EmbeddingWorker } from './processing/embedding-worker.js';
+import { SearchService } from './search/search-service.js';
+import { VectorIndex } from './search/vector-index.js';
 import { TaskService, type TaskOptions } from './processing/task-service.js';
 import { SettingsService } from './settings/settings-service.js';
 import { KeyedMutex } from './shared/keyed-mutex.js';
@@ -29,6 +34,7 @@ export interface Services {
   tasks: TaskService;
   settings: SettingsService;
   purge: PurgeWorker;
+  search: SearchService;
   gc: GarbageCollector;
 }
 
@@ -37,6 +43,7 @@ export async function createApp(
   env: Env,
   logger: LoggerOption = true,
   taskOptions: Partial<TaskOptions> = {},
+  embedderOverride?: Embedder,
 ): Promise<{ app: FastifyInstance; services: Services }> {
   ensureDataDir(env.dataDir);
   const db = openDatabase(path.join(env.dataDir, 'album.sqlite'));
@@ -54,6 +61,18 @@ export async function createApp(
   const settings = new SettingsService(db);
   tasks.register('caption', new CaptionWorker(ctx, settings, tasks, tasks.maxAttempts));
   tasks.register('enrichment', new EnrichmentWorker(ctx, settings));
+  const embedder =
+    embedderOverride ??
+    new VllmEmbedder({
+      enabled: env.vllmEnabled,
+      baseUrl: env.vllmBaseUrl,
+      servedModel: env.vllmServedModel,
+      modelId: env.embeddingModelId,
+      revision: env.embeddingRevision,
+      dimension: 2048,
+    });
+  const vectors = new VectorIndex(db, embedder.dimension);
+  tasks.register('embedding', new EmbeddingWorker(ctx, embedder, vectors, env.embeddingConcurrency));
   const assets = new AssetService(ctx, albums, tasks);
   const services: Services = {
     ctx,
@@ -65,13 +84,14 @@ export async function createApp(
     tasks,
     settings,
     purge: new PurgeWorker(ctx, settings, app.log),
+    search: new SearchService(db, settings, vectors, embedder),
     gc: new GarbageCollector(ctx, app.log),
   };
   await registerRoutes(app, services);
   app.addHook('onClose', async () => {
     services.gc.stop();
-    services.tasks.stop();
     services.purge.stop();
+    await Promise.all([services.tasks.drain(), services.imports.drain()]);
     db.close();
   });
   return { app, services };

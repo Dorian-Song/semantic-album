@@ -47,3 +47,13 @@ This log records where the design differs from the *Team Formation and Role Assi
 ## 2026-09-26 — Image formats
 
 **Decision:** detect formats by magic bytes (including HEIC/HEIF/AVIF brands inside `ftyp` boxes), keep originals byte-for-byte, and generate a JPEG display derivative through sharp or external decoders (`heif-dec`, `ffmpeg`, ImageMagick). Undecodable files are recorded as unsupported and do not stop a batch. This reuses the approach from the team's earlier Matilta project.
+
+## 2026-09-26 — Vector search without sqlite-vec
+
+**Decision:** store image vectors as float32 BLOBs in SQLite and search them with an exact in-memory scan.
+**Why:** at the 10,000-photo target, a scan of 2048-dimensional vectors takes milliseconds and needs no native extension. The design already allowed this ("use a `sqlite-vec` KNN index only if measurement shows it is needed"). Revisit only if the library grows by an order of magnitude.
+
+## 2026-09-26 — Embedding request format follows the model card, verified by measurement
+
+**Decision:** photos and queries use the same instruction, and the chat template includes the generation prompt.
+**Why:** on 300 COCO images, caption→image Recall@1 was 72% with this format, against 45% with vLLM's default template setting and at most 59% with custom query instructions. The first eight-image probe had suggested the opposite; the larger sample showed that was noise.

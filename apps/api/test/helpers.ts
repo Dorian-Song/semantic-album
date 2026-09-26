@@ -7,11 +7,19 @@ import { promisify } from 'node:util';
 import sharp from 'sharp';
 import { createApp } from '../src/app.js';
 import type { Env } from '../src/config/env.js';
+import type { Embedder } from '../src/inference/embedder.js';
 import type { TaskOptions } from '../src/processing/task-service.js';
 
 const run = promisify(execFile);
 
-export async function testApp(overrides: Partial<Env> = {}, taskOptions: Partial<TaskOptions> = {}, reuseDir?: string) {
+/** `startTasks: false` leaves the task queue idle, as between createApp() and start() in main.ts. */
+export async function testApp(
+  overrides: Partial<Env> = {},
+  taskOptions: Partial<TaskOptions> = {},
+  reuseDir?: string,
+  startTasks = true,
+  embedder?: Embedder,
+) {
   const dir = reuseDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'album-it-'));
   const env: Env = {
     apiHost: '127.0.0.1',
@@ -23,9 +31,14 @@ export async function testApp(overrides: Partial<Env> = {}, taskOptions: Partial
     importConcurrency: 2,
     maxImportBytes: 20 * 1024 * 1024,
     assetGraceMs: 60_000,
+    vllmServedModel: 'test-model',
+    embeddingModelId: 'test/embedding',
+    embeddingRevision: 'test',
+    embeddingConcurrency: 2,
     ...overrides,
   };
-  const { app, services } = await createApp(env, false, { pollMs: 20, baseDelayMs: 10, ...taskOptions });
+  const { app, services } = await createApp(env, false, { pollMs: 20, baseDelayMs: 10, ...taskOptions }, embedder);
+  if (startTasks) services.tasks.start();
   return {
     app,
     services,

@@ -158,6 +158,16 @@ UI modes map to backend `words`, `meaning`, `both`. Default to `words` for speed
 
 Scope is one album, selected album IDs, or all. Optional metadata filters are capture-date range and camera model; an asset whose field is null does not match an active filter, and the response reports how many in-scope photos lack that field. Filter eligible asset IDs through membership and metadata **before** ranking and pagination. At the 10,000-photo scale, an exact vector scan over the eligible set is acceptable; use a `sqlite-vec` KNN index only if measurement shows it is needed. Deduplicate by global `asset_id`. After choosing a page of asset IDs, fetch **all** of each asset's current album memberships in a separate query, regardless of search scope. For example, searching album A for an asset also in B returns one result with both `A` and `B` in `albums`. Scope determines where a result qualifies, not which membership names are displayed. If local inference is unavailable, `meaning`/`both` report a clear unavailable state or fall back explicitly to `words`; never silently return zero matches.
 
+### Implementation notes (build step 6)
+
+- **Embedding requests** go to vLLM's `/v1/embeddings` with chat `messages`: a system message with the model card's instruction `"Represent the user's input."` for both photos and queries, then the image (`image_url` data URL) or the query text, with `add_generation_prompt: true`. On 300 COCO val2017 images this gives caption→image Recall@1/5/10 of 72.0 / 94.0 / 98.3%. vLLM's default (`add_generation_prompt: false`) gives 44.7 / 79.3 / 87.3%, and custom query instructions gave 23.7–59.3% Recall@1, so neither is used.
+- **Photos are embedded from the display derivative** downscaled to a 1280 px long edge; the model's processor caps images at about 1.3 MP anyway.
+- **Vectors live in `photo_vectors` as float32 BLOBs** and are searched by an exact in-memory scan (dot product of L2-normalised vectors). At 10,000 photos this takes a few milliseconds, so `sqlite-vec` was not needed; the extension would add a native dependency without a measurable benefit at this scale.
+- **The index guards its model**: `embedding_meta` is written with the first vector. A non-empty index refuses vectors from a different model, revision, or dimension, and the embedding queue pauses with a "must be rebuilt" message.
+- **Words** uses FTS5 with bm25 weights caption 1.0, tags and n8n categories 2.0, filenames 0.5; terms are OR-ed prefixes, so photos matching more terms rank higher. A term with no prefix match is replaced by the closest indexed word within edit distance 1 (2 for words of 7+ letters). On ties, a word containing the typed letters in order is preferred, then the more common word, and the UI names the correction.
+- **Meaning** ranks every eligible photo by similarity and keeps the top 300; **Both** fuses the Words and Meaning top-300 lists with reciprocal-rank fusion (k = 60). Query vectors are cached (200 most recent).
+- **Measured on the development machine** (8 GB RTX 4060 Laptop, vLLM 0.30.0, 0.8 GPU memory utilisation): about 6.1 GB of GPU memory in use, 33–80 s start-up, about 12 photos/s embedded at 6 requests in flight, and about 25 ms per text query. `scripts/search-benchmark.mjs` measures recall and p50/p95 search latency on an imported COCO library.
+
 ### Latency target and progressive results
 
 The target is p95 search latency under 3 seconds on a 10,000-photo library, measured with a fixed query set and logged per phase (query embedding, vector scan, FTS, hydration). `words` alone should be far below this.
@@ -254,7 +264,7 @@ These routes are a proposed contract; use consistent IDs, pagination, error bodi
 | `POST /api/photos/:id/caption` | Queue a new AI description revision (manual text is kept). |
 | `POST /api/settings/test-caption` | Test a saved provider with a generated picture. |
 | `POST /api/search` | Query, mode, album scope, optional date/camera filters, page; returns each photo once plus all memberships. |
-| `POST /api/search/stream` | Progressive NDJSON variant of the first page (enabled only if needed). |
+| `POST /api/search/stream` | Progressive NDJSON variant of the first page (only if measured p95 requires it; not built yet). |
 | `GET /api/search/facets` | Camera models and date range present in the library, for filter controls. |
 | `POST /api/exports`, `GET /api/exports/:id/download` | Create and download a ZIP export. |
 | `GET/PUT /api/settings` | Search default, vision providers, n8n, worker limits, detected image tools, embedding status; redact secrets on read. |

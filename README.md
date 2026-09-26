@@ -47,7 +47,17 @@ The chosen direction is a TypeScript frontend/backend with SQLite, FTS5, a SQLit
 
 ## Running locally
 
-Requirements: Node.js 22.12+, pnpm 10, Docker (for the local n8n instance), and a C++ toolchain in case `better-sqlite3` has no prebuilt binary for your Node version. HEIC/AVIF support later needs `libheif` tools, `ffmpeg`, or ImageMagick.
+Requirements: Node.js 22.12+, pnpm 10, Docker (for the local n8n instance), and a C++ toolchain in case `better-sqlite3` has no prebuilt binary for your Node version. HEIC and BMP need `libheif` tools (`heif-dec`), `ffmpeg`, or ImageMagick. Meaning search needs an NVIDIA GPU (8 GB is enough) with a recent driver.
+
+One-time setup for Meaning search (about 12 GB of downloads):
+
+```bash
+uv venv .venv --python 3.12
+uv pip install --python .venv/bin/python vllm==0.30.0
+# Qwen3-VL-Embedding-2B into models/Qwen3-VL-Embedding-2B, with the pinned commit in models/Qwen3-VL-Embedding-2B/REVISION
+```
+
+Then set `VLLM_ENABLED=true` in `.env`. Without it, Album works normally and Meaning/Both searches fall back to Words, with a notice.
 
 ```bash
 ./start.sh     # installs dependencies on first run, then starts API, web, and local n8n
@@ -58,7 +68,8 @@ pnpm test
 
 - App: <http://localhost:5173>
 - API health: <http://localhost:3200/api/health>
-- n8n editor: <http://localhost:5678> (setup notes in [automation/n8n](automation/n8n/README.md))
+- n8n editor: <http://localhost:5678> (setup and `deploy.mjs` in [automation/n8n](automation/n8n/README.md))
+- Search benchmark on COCO: `node scripts/search-benchmark.mjs` after importing `datasets/coco/val2017`
 
 Settings live in `.env` (copied from `.env.example`). Logs and PID files are in `.run/`; the photo library is in `data/`.
 

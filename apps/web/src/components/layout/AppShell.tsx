@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router';
 import { CreateAlbumDialog } from '../dialogs/AlbumDialogs';
 import { ImportFolderDialog, ImportPhotosDialog } from '../dialogs/ImportDialogs';
 import { ImportProgressPanel } from '../progress/ImportProgressPanel';
+import { SearchBar } from '../search/SearchBar';
 
 const NAV = [
   { to: '/', label: 'Home', end: true },
@@ -40,6 +41,7 @@ export function AppShell() {
       </aside>
       <div className="main-column">
         <header className="topbar">
+          <SearchBar />
           <div className="topbar-actions">
             <button type="button" className="btn" onClick={() => setDialog('import-photos')}>
               Import Photos

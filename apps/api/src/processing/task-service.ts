@@ -71,6 +71,8 @@ export class TaskService {
   private readonly paused = new Map<TaskKind, { until: number; reason: string }>();
   private readonly opts: TaskOptions;
   private timer: NodeJS.Timeout | null = null;
+  private started = false;
+  private stopping = false;
 
   constructor(
     private readonly ctx: AppContext,
@@ -96,15 +98,22 @@ export class TaskService {
     for (const kind of kinds) insert.run(newId(), assetId, kind, revision, now, now);
   }
 
+  /** Begins claiming work. Call after recover(), so recovery never resets tasks this process is running. */
   start(): void {
+    if (this.started) return;
+    this.started = true;
     this.timer = setInterval(() => this.kick(), this.opts.pollMs);
     this.timer.unref();
     this.kick();
   }
 
-  stop(): void {
+  /** Stops claiming work and waits (up to `timeoutMs`) for running tasks, so the database can close cleanly. */
+  async drain(timeoutMs = 10_000): Promise<void> {
+    this.stopping = true;
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    const deadline = Date.now() + timeoutMs;
+    while ([...this.active.values()].some((n) => n > 0) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 20));
   }
 
   /** Startup recovery: work that was running when the process stopped is queued again. */
@@ -118,6 +127,7 @@ export class TaskService {
 
   /** Starts due tasks up to each kind's concurrency limit. */
   kick(): void {
+    if (!this.started || this.stopping) return;
     for (const [kind, handler] of this.handlers) {
       const pause = this.paused.get(kind);
       if (pause && pause.until > Date.now()) continue;

@@ -894,3 +894,125 @@ code {
   padding: 1px 5px;
   border-radius: 4px;
 }
+
+/* ---------- search ---------- */
+.topbar {
+  gap: 16px;
+  align-items: center;
+}
+.search-bar {
+  flex: 1;
+  max-width: 640px;
+}
+.search-bar input {
+  width: 100%;
+  font: inherit;
+  padding: 9px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-surface);
+}
+.search-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  margin: 8px 0 16px;
+}
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  padding: 2px;
+  margin: 0;
+  background: var(--color-surface);
+}
+.segmented label {
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.segmented label.is-active {
+  background: var(--color-accent-soft);
+  font-weight: 600;
+}
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.segmented label:focus-within {
+  outline: 2px solid var(--color-accent);
+}
+.scope-menu summary {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 7px 12px;
+  font-size: 0.95rem;
+}
+.scope-list {
+  left: 0;
+  right: auto;
+  min-width: 220px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.scope-list label {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  align-items: center;
+}
+.filter-dates,
+.filter-camera {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.95rem;
+}
+.filter-dates label,
+.filter-camera {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.filter-dates input,
+.filter-camera select {
+  font: inherit;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+.search-notices p {
+  margin: 4px 0;
+}
+.notice {
+  background: #fff8e6;
+  border: 1px solid #f3e1b0;
+  border-radius: var(--radius-small);
+  padding: 8px 12px;
+}
+.result-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.result-thumb {
+  aspect-ratio: 1;
+  border-radius: var(--radius-small);
+  overflow: hidden;
+  background: var(--color-sidebar);
+}
+.result-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.result-albums {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

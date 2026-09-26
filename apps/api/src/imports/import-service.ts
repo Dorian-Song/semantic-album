@@ -80,6 +80,7 @@ interface ClaimedItem {
 
 export class ImportService {
   private active = 0;
+  private stopping = false;
   /** In-memory stage measurements per job, persisted to import_jobs.stats when the job completes. */
   private readonly measurements = new Map<string, { firstStart: number; lastEnd: number; stage: number[]; ingest: number[] }>();
 
@@ -302,9 +303,16 @@ export class ImportService {
     this.kick();
   }
 
+  /** Stops starting folder items and waits for those in progress; unfinished ones resume on the next start. */
+  async drain(timeoutMs = 10_000): Promise<void> {
+    this.stopping = true;
+    const deadline = Date.now() + timeoutMs;
+    while (this.active > 0 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 20));
+  }
+
   /** Starts folder items up to the concurrency limit. */
   kick(): void {
-    while (this.active < this.ctx.env.importConcurrency) {
+    while (!this.stopping && this.active < this.ctx.env.importConcurrency) {
       const item = this.claimNextFolderItem();
       if (!item) return;
       this.active++;

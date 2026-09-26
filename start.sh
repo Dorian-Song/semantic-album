@@ -36,13 +36,16 @@ if [ "${N8N_MODE:-local}" = local ]; then
 fi
 
 if [ "${VLLM_ENABLED:-false}" = true ]; then
-  if command -v vllm >/dev/null; then
-    # Flags are verified in build step 6; memory settings are conservative for an 8 GB GPU.
-    start_proc vllm "vllm serve '$VLLM_MODEL' ${VLLM_REVISION:+--revision '$VLLM_REVISION'} --runner pooling \
-      --host 127.0.0.1 --port '${VLLM_PORT:-8000}' \
-      --gpu-memory-utilization '${VLLM_GPU_MEMORY_UTILIZATION:-0.6}' --max-model-len '${VLLM_MAX_MODEL_LEN:-4096}'"
+  vllm_bin=.venv/bin/vllm
+  [ -x "$vllm_bin" ] || vllm_bin=$(command -v vllm || true)
+  if [ -n "$vllm_bin" ]; then
+    # Measured on an 8 GB RTX 4060 Laptop GPU: about 6.1 GB in use at 0.8, ~80 s cold start.
+    start_proc vllm "'$vllm_bin' serve '${VLLM_MODEL:-models/Qwen3-VL-Embedding-2B}' --runner pooling \
+      --served-model-name qwen3-vl-embedding-2b --host 127.0.0.1 --port '${VLLM_PORT:-8000}' \
+      --gpu-memory-utilization '${VLLM_GPU_MEMORY_UTILIZATION:-0.8}' --max-model-len '${VLLM_MAX_MODEL_LEN:-4096}' \
+      --limit-mm-per-prompt '{\"image\":1,\"video\":0}'"
   else
-    echo "[vllm] VLLM_ENABLED=true but vllm is not installed; Meaning search will be unavailable"
+    echo "[vllm] VLLM_ENABLED=true but vllm is not installed (.venv/bin/vllm); Meaning search will be unavailable"
   fi
 fi
 
@@ -53,4 +56,5 @@ echo
 echo "App:  http://localhost:${WEB_PORT:-5173}"
 echo "API:  http://localhost:${API_PORT:-3200}/api/health"
 [ "${N8N_MODE:-local}" = local ] && echo "n8n:  http://localhost:5678"
+[ "${VLLM_ENABLED:-false}" = true ] && echo "vLLM: http://127.0.0.1:${VLLM_PORT:-8000}/health (ready after ~1-2 minutes)"
 echo "Stop: ./stop.sh"

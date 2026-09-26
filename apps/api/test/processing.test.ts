@@ -41,8 +41,8 @@ describe('processing tasks', () => {
       assert.deepEqual(job.processing.caption, { total: 3, done: 0, failed: 0 });
       assert.deepEqual(job.processing.embedding, { total: 3, done: 0, failed: 0 });
       assert.deepEqual(job.processing.enrichment, { total: 0, done: 0, failed: 0 });
-      assert.equal(kind(t, 'embedding').registered, false);
       assert.equal(kind(t, 'embedding').pending, 3);
+      assert.match(kind(t, 'embedding').pausedReason ?? '', /turned off/);
       assert.equal(kind(t, 'caption').pausedReason, 'AI descriptions are turned off in Settings');
       assert.ok(t.services.ctx.db.prepare(`SELECT attempts FROM processing_tasks WHERE kind = 'caption'`).pluck().all().every((a) => a === 0));
       assert.ok(job.timings && job.timings.stage.count === 3 && job.timings.ingest.p95Ms >= 0);
@@ -145,9 +145,10 @@ describe('restart recovery', () => {
     db.prepare(`UPDATE processing_tasks SET state = 'running' WHERE kind = 'caption'`).run();
     await first.stop();
 
-    const second = await testApp({}, {}, first.dir);
+    const second = await testApp({}, {}, first.dir, false);
     try {
       assert.equal(second.services.tasks.recover(), 5);
+      second.services.tasks.start();
       second.services.imports.recover();
       await second.services.imports.idle();
       const after = await progress(second, job.id);

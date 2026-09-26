@@ -7,6 +7,7 @@ import { ErrorState, Loading } from '../components/common/states';
 import { AddToAlbumDialog, DeletePhotoDialog, EditDescriptionDialog, MovePhotoDialog, RemoveFromAlbumDialog } from '../components/dialogs/PhotoDialogs';
 import { DescriptionBlock } from '../components/photos/DescriptionBlock';
 import { formatBytes, formatTakenAt } from '../format';
+import { getSearchContext } from '../hooks/searchContext';
 
 type DetailDialog = { kind: 'edit' } | { kind: 'add' } | { kind: 'delete' } | { kind: 'move'; from: AlbumRef } | { kind: 'remove'; album: AlbumRef } | null;
 
@@ -34,14 +35,34 @@ export function PhotoDetailPage() {
   const { id = '' } = useParams();
   const [params] = useSearchParams();
   const albumCtx = params.get('album');
+  const search = params.get('from') === 'search' ? getSearchContext() : null;
+  const searchIndex = search ? search.items.findIndex((i) => i.id === id) : -1;
+  const fromSearch = search !== null && searchIndex >= 0;
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<DetailDialog>(null);
   const photo = useQuery({ queryKey: ['photo', id, albumCtx], queryFn: () => getPhoto(id, albumCtx) });
-  const context = useQuery({ queryKey: ['photoContext', id, albumCtx], queryFn: () => getPhotoContext(id, albumCtx), retry: false });
+  const serverContext = useQuery({
+    queryKey: ['photoContext', id, albumCtx],
+    queryFn: () => getPhotoContext(id, albumCtx),
+    retry: false,
+    enabled: !fromSearch,
+  });
+  // From search results, step through the results in the order they were shown.
+  const context = fromSearch
+    ? {
+        data: {
+          index: searchIndex,
+          total: search.items.length,
+          prevId: search.items[searchIndex - 1]?.id ?? null,
+          nextId: search.items[searchIndex + 1]?.id ?? null,
+          window: search.items.slice(Math.max(0, searchIndex - 12), searchIndex + 13),
+        },
+      }
+    : serverContext;
   const strip = useRef<HTMLOListElement>(null);
 
-  const hrefFor = (pid: string) => `/photos/${pid}${albumCtx ? `?album=${albumCtx}` : ''}`;
-  const backHref = albumCtx ? `/albums/${albumCtx}` : '/photos';
+  const hrefFor = (pid: string) => `/photos/${pid}${fromSearch ? '?from=search' : albumCtx ? `?album=${albumCtx}` : ''}`;
+  const backHref = fromSearch ? search.href : albumCtx ? `/albums/${albumCtx}` : '/photos';
   const ctxAlbum = photo.data?.albums.find((a) => a.id === albumCtx);
   const prevId = context.data?.prevId ?? null;
   const nextId = context.data?.nextId ?? null;
@@ -82,7 +103,7 @@ export function PhotoDetailPage() {
       <div className="detail-main">
         <div className="detail-top">
           <Link to={backHref} className="back-link">
-            ← Back to {albumCtx ? (ctxAlbum?.name ?? 'album') : 'All Photos'}
+            ← Back to {fromSearch ? 'search results' : albumCtx ? (ctxAlbum?.name ?? 'album') : 'All Photos'}
           </Link>
           <a className="btn btn-small" href={originalUrl(p.id)} download={p.filename}>
             Download original

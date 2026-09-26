@@ -5,6 +5,7 @@ import { AlbumsPage } from '../pages/AlbumsPage';
 import { AllPhotosPage } from '../pages/AllPhotosPage';
 import { HomePage } from '../pages/HomePage';
 import { PhotoDetailPage } from '../pages/PhotoDetailPage';
+import { SearchResultsPage } from '../pages/SearchResultsPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { Providers } from './providers';
 
@@ -26,6 +27,7 @@ const router = createBrowserRouter([
       { path: '/photos/:id', element: <PhotoDetailPage /> },
       { path: '/albums', element: <AlbumsPage /> },
       { path: '/albums/:id', element: <AlbumPage /> },
+      { path: '/search', element: <SearchResultsPage /> },
       { path: '/settings', element: <SettingsPage /> },
       { path: '*', element: <NotFound /> },
     ],
