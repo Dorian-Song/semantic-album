@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.run/
+data/
+.env
+automation/n8n/.env
+*.sqlite
+*.sqlite-*
+models/

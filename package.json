@@ -1,0 +1,21 @@
+{
+  "name": "album",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Album — a local-first AI photo library",
+  "scripts": {
+    "dev:api": "pnpm --filter @album/api dev",
+    "dev:web": "pnpm --filter @album/web dev",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}

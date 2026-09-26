@@ -1,0 +1,17 @@
+# Self-hosted n8n Community edition. The same file runs locally and on the cloud server;
+# only automation/n8n/.env differs (see README.md in this folder).
+name: album-n8n
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION:-2.40.7}
+    container_name: album-n8n
+    restart: unless-stopped
+    ports:
+      - "${N8N_BIND:-127.0.0.1}:5678:5678"
+    env_file: .env
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:

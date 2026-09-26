@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Album UI Concepts</title>
+    <style>
+      :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f7f9f7; color: #183047; }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      header { padding: 3rem clamp(1rem, 4vw, 4rem) 2rem; background: linear-gradient(135deg, #eef6f1, #f4f8fd); }
+      h1 { margin: 0 0 .5rem; font-size: clamp(2rem, 4vw, 3rem); }
+      p { max-width: 65ch; line-height: 1.5; color: #4c6274; }
+      main { max-width: 1600px; margin: auto; padding: 1rem clamp(1rem, 3vw, 3rem) 4rem; }
+      h2 { margin: 2rem 0 1rem; font-size: 1.35rem; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 1.25rem; }
+      a.card { display: block; background: white; color: inherit; border: 1px solid #dce5e8; border-radius: 14px; overflow: hidden; text-decoration: none; box-shadow: 0 4px 18px #1b3b4b0a; }
+      a.card:hover, a.card:focus-visible { outline: 3px solid #7aa9ce; outline-offset: 2px; }
+      img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; object-position: top; display: block; background: #eef2f2; }
+      .label { display: block; padding: .85rem 1rem 1rem; font-weight: 650; }
+      .small { font-size: .9rem; font-weight: 400; color: #667a8b; display: block; margin-top: .2rem; }
+      footer { padding: 0 2rem 3rem; text-align: center; }
+      footer a { color: #245f88; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Album UI Concepts</h1>
+      <p>Visual exploration for a local, single-user photo album. Open any image to inspect it at full size. These mockups are discussion material; <a href="README.md">read the behavior notes and known generation artifacts</a> before implementation.</p>
+    </header>
+    <main>
+      <h2>Pages</h2>
+      <div class="grid">
+        <a class="card" href="01-home.png"><img src="01-home.png" alt="Home page concept" loading="lazy" /><span class="label">01 · Home<span class="small">Banner, albums, recent photos</span></span></a>
+        <a class="card" href="02-album.png"><img src="02-album.png" alt="Album page concept" loading="lazy" /><span class="label">02 · Album<span class="small">Current-album import and photo grid</span></span></a>
+        <a class="card" href="03-photo-detail.png"><img src="03-photo-detail.png" alt="Photo detail concept" loading="lazy" /><span class="label">03 · Photo detail<span class="small">Previous/next and album membership</span></span></a>
+        <a class="card" href="04-search-results.png"><img src="04-search-results.png" alt="Search results concept" loading="lazy" /><span class="label">04 · Search results<span class="small">Multiple search albums, complete memberships</span></span></a>
+        <a class="card" href="05-settings.png"><img src="05-settings.png" alt="Settings page concept" loading="lazy" /><span class="label">05 · Settings<span class="small">Search, models, progress, optional n8n</span></span></a>
+        <a class="card" href="15-empty-album.png"><img src="15-empty-album.png" alt="Empty album concept" loading="lazy" /><span class="label">15 · Empty album<span class="small">Import entry points</span></span></a>
+      </div>
+      <h2>Import and album dialogs</h2>
+      <div class="grid">
+        <a class="card" href="06-new-album.png"><img src="06-new-album.png" alt="New album dialog" loading="lazy" /><span class="label">06 · New album</span></a>
+        <a class="card" href="07-import-folder.png"><img src="07-import-folder.png" alt="Folder import dialog" loading="lazy" /><span class="label">07 · Import folder</span></a>
+        <a class="card" href="08-import-to-album.png"><img src="08-import-to-album.png" alt="Import to album dialog" loading="lazy" /><span class="label">08 · Import to album</span></a>
+        <a class="card" href="11-delete-album.png"><img src="11-delete-album.png" alt="Delete album confirmation" loading="lazy" /><span class="label">11 · Delete album</span></a>
+        <a class="card" href="14-rename-album.png"><img src="14-rename-album.png" alt="Rename album dialog" loading="lazy" /><span class="label">14 · Rename album</span></a>
+      </div>
+      <h2>Photo dialogs</h2>
+      <div class="grid">
+        <a class="card" href="09-move-photo.png"><img src="09-move-photo.png" alt="Move photo dialog" loading="lazy" /><span class="label">09 · Move photo</span></a>
+        <a class="card" href="10-edit-description.png"><img src="10-edit-description.png" alt="Edit description dialog" loading="lazy" /><span class="label">10 · Edit description</span></a>
+        <a class="card" href="12-delete-photo.png"><img src="12-delete-photo.png" alt="Delete photo confirmation" loading="lazy" /><span class="label">12 · Delete photo</span></a>
+        <a class="card" href="13-add-to-album.png"><img src="13-add-to-album.png" alt="Add photo to album dialog" loading="lazy" /><span class="label">13 · Add to album</span></a>
+      </div>
+    </main>
+    <footer><a href="README.md">Behavior notes and review</a></footer>
+  </body>
+</html>
