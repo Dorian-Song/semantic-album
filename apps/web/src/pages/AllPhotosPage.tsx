@@ -18,10 +18,10 @@ export function AllPhotosPage() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>All Photos</h1>
-        {pages.total > 0 && <p className="muted">{pages.total} photos</p>}
-      </div>
+      <header className="page-title">
+        <h1 className="display-title">All Photos</h1>
+        <p className="muted">{pages.total > 0 ? `${pages.total.toLocaleString()} photos, newest first` : 'Everything in your library.'}</p>
+      </header>
       <SelectionBar count={selected.size} onClear={clear} onSelectAll={() => setAll(pages.photos.map((p) => p.id))}>
         <button type="button" className="btn btn-small" onClick={() => setDialog('add')}>
           Add to album

@@ -1,8 +1,8 @@
 import { api } from './client';
 import type { AlbumRef, Page, PhotoContext, PhotoDetail, PhotoSummary } from './types';
 
-export const listPhotos = (offset: number, limit = 60, order: 'date' | 'recent' = 'date') =>
-  api<Page<PhotoSummary>>(`/api/photos?offset=${offset}&limit=${limit}&order=${order}`);
+export const listPhotos = (offset: number, limit = 60, order: 'date' | 'recent' = 'date', kind?: string) =>
+  api<Page<PhotoSummary>>(`/api/photos?offset=${offset}&limit=${limit}&order=${order}${kind ? `&kind=${kind}` : ''}`);
 export const getPhoto = (id: string, albumId: string | null = null) =>
   api<PhotoDetail>(`/api/photos/${id}${albumId ? `?album=${encodeURIComponent(albumId)}` : ''}`);
 export const getPhotoContext = (id: string, albumId: string | null) =>

@@ -22,6 +22,7 @@ export function registerAlbumRoutes(app: FastifyInstance, { albums, photos }: Se
   );
 
   app.get<{ Params: { id: string } }>('/api/albums/:id', { schema: { params: idParams } }, async (req) => albums.get(req.params.id));
+  app.get<{ Params: { id: string } }>('/api/albums/:id/processing', { schema: { params: idParams } }, async (req) => albums.processing(req.params.id));
 
   app.patch<{ Params: { id: string }; Body: { name: string } }>(
     '/api/albums/:id',

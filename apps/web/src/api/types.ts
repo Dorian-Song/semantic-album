@@ -57,6 +57,23 @@ export interface PhotoContext {
   window: PhotoSummary[];
 }
 
+export interface Throughput {
+  perSecond: number;
+  perSecond5m: number;
+  avgMs: number | null;
+  p95Ms: number | null;
+  finishedSinceStart: number;
+}
+
+export interface StageClock {
+  startedAt: string;
+  finishedAt: string | null;
+  elapsedMs: number;
+  done: number;
+  perSecond: number;
+  avgMs: number | null;
+}
+
 export type JobState = 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'canceled';
 
 export interface ImportJob {
@@ -71,6 +88,7 @@ export interface ImportJob {
   problems: { filename: string; state: string; reason: string | null }[];
   missingKeys: string[];
   processing: Record<TaskKind, { total: number; done: number; failed: number }>;
+  stages: Record<'import' | TaskKind, StageClock | null>;
   createdAt: string;
   updatedAt: string;
 }
@@ -87,4 +105,5 @@ export interface KindSummary {
   running: number;
   succeeded: number;
   failed: number;
+  throughput: Throughput;
 }

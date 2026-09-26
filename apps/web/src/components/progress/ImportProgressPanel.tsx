@@ -5,6 +5,8 @@ import { getProcessing, KIND_LABELS, waitingReason } from '../../api/processing'
 import type { ImportJob, KindSummary, TaskKind } from '../../api/types';
 import { useRefreshLibrary } from '../../app/providers';
 import { resumeWithFiles, useActiveUploads } from '../../hooks/uploads';
+import { formatDuration, formatRate } from '../../format';
+import { Icon } from '../common/Icon';
 import { FileInput } from '../dialogs/ImportDialogs';
 
 const REASONS: Record<string, string> = {
@@ -29,14 +31,21 @@ function ProcessingLines({ job, kinds }: { job: ImportJob; kinds: KindSummary[] 
       {rows.map((k) => {
         const p = job.processing[k];
         const reason = p.done + p.failed < p.total ? waitingReason(kinds.find((x) => x.kind === k)) : null;
+        const clock = job.stages[k];
+        const pct = p.total ? ((p.done + p.failed) / p.total) * 100 : 0;
         return (
           <li key={k}>
-            <span>{KIND_LABELS[k]}</span>
-            <span className="muted">
-              {p.done} of {p.total}
-              {p.failed > 0 && ` · ${p.failed} failed`}
-              {reason && ` · ${reason}`}
-            </span>
+            <div className="job-stage-line">
+              <span>{KIND_LABELS[k]}</span>
+              <span className="muted">
+                {p.done.toLocaleString()} / {p.total.toLocaleString()}
+                {p.failed > 0 && ` · ${p.failed} failed`}
+                {reason ? ` · ${reason}` : clock && ` · ${formatRate(clock.perSecond)}`}
+              </span>
+            </div>
+            <div className={`bar bar-thin bar-${k}`} aria-hidden="true">
+              <span style={{ width: `${pct}%` }} />
+            </div>
           </li>
         );
       })}
@@ -77,7 +86,7 @@ function JobCard({ job, kinds, uploading, onDismiss }: { job: ImportJob; kinds: 
         <strong>{title}</strong>
         {terminal ? (
           <button type="button" className="icon-btn" aria-label="Dismiss" onClick={onDismiss}>
-            ×
+            <Icon name="x" size={16} />
           </button>
         ) : (
           <button type="button" className="link-btn" onClick={() => void cancelImport(job.id).then(refresh)}>
@@ -86,11 +95,19 @@ function JobCard({ job, kinds, uploading, onDismiss }: { job: ImportJob; kinds: 
         )}
       </div>
       <p className="muted job-source">{job.sourceLabel}</p>
-      <progress max={total || 1} value={done} aria-label="Import progress" />
+      <div className="bar bar-import" role="progressbar" aria-label="Import progress" aria-valuenow={done} aria-valuemin={0} aria-valuemax={total || 1}>
+        <span style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+      </div>
       <p className="job-counts">
-        {imported} of {total} imported
+        {imported.toLocaleString()} of {total.toLocaleString()} imported
         {skipped > 0 && ` · ${skipped} skipped`}
         {failed > 0 && ` · ${failed} failed`}
+        {job.stages.import && (
+          <span className="muted">
+            {' '}
+            · {formatDuration(job.stages.import.elapsedMs)}, {formatRate(job.stages.import.perSecond)}
+          </span>
+        )}
       </p>
       <ProcessingLines job={job} kinds={kinds} />
       {needsReselect && (

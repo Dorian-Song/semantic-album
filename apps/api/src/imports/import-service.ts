@@ -27,12 +27,39 @@ export interface ImportProgress {
   problems: { filename: string; state: ItemState; reason: string | null }[];
   /** Caption/embedding/enrichment progress of this import's photos, counted separately from the import. */
   processing: Record<TaskKind, { total: number; done: number; failed: number }>;
+  /** Wall-clock time and rate of each stage, from stored timestamps (survives restarts). */
+  stages: Record<'import' | TaskKind, StageClock | null>;
   /** Stage timings, written when the job completes (null before, or if it finished before a restart). */
   timings: JobTimings | null;
   /** Keys of items not yet received from the browser. Once no upload is running, the UI asks the user to reselect them. */
   missingKeys: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface StageClock {
+  startedAt: string;
+  /** Null while the stage still has work left. */
+  finishedAt: string | null;
+  elapsedMs: number;
+  done: number;
+  perSecond: number;
+  /** Mean run time of one item (tasks only). */
+  avgMs: number | null;
+}
+
+function clock(startedAt: string | null, lastAt: string | null, done: number, finished: boolean, avgMs: number | null): StageClock | null {
+  if (!startedAt || done === 0) return null;
+  const end = finished && lastAt ? Date.parse(lastAt) : Date.now();
+  const elapsedMs = Math.max(1, end - Date.parse(startedAt));
+  return {
+    startedAt,
+    finishedAt: finished ? lastAt : null,
+    elapsedMs,
+    done,
+    perSecond: Math.round((done / elapsedMs) * 1000 * 10) / 10,
+    avgMs: avgMs === null ? null : Math.round(avgMs),
+  };
 }
 
 export interface StageTiming {
@@ -228,7 +255,7 @@ export class ImportService {
            FROM import_jobs j LEFT JOIN albums al ON al.id = j.album_id WHERE j.id = ?`,
       )
       .get(jobId) as
-      | (Omit<ImportProgress, 'counts' | 'problems' | 'missingKeys' | 'intakeClosed' | 'processing' | 'timings'> & { intakeClosed: number; stats: string | null })
+      | (Omit<ImportProgress, 'counts' | 'problems' | 'missingKeys' | 'intakeClosed' | 'processing' | 'timings' | 'stages'> & { intakeClosed: number; stats: string | null })
       | undefined;
     if (!job) throw notFound('Import');
     const counts = { total: 0, imported: 0, skipped: 0, failed: 0, pending: 0 };
@@ -249,15 +276,53 @@ export class ImportService {
         ? (db.prepare(`SELECT item_key FROM import_items WHERE job_id = ? AND state = 'pending' LIMIT 5000`).pluck().all(jobId) as string[])
         : [];
     const { stats, ...rest } = job;
+    const processing = this.processingOf(jobId);
     return {
       ...rest,
       intakeClosed: job.intakeClosed === 1,
       counts,
       problems,
       missingKeys,
-      processing: this.processingOf(jobId),
+      processing,
       timings: stats ? (JSON.parse(stats) as JobTimings) : null,
+      stages: this.stagesOf(jobId, job.createdAt, counts, job.state === 'completed' || job.state === 'canceled', processing),
     };
+  }
+
+  private stagesOf(
+    jobId: string,
+    createdAt: string,
+    counts: ImportProgress['counts'],
+    importDone: boolean,
+    processing: ImportProgress['processing'],
+  ): ImportProgress['stages'] {
+    const { db } = this.ctx;
+    const lastItem = db.prepare(`SELECT max(updated_at) FROM import_items WHERE job_id = ? AND state NOT IN ('pending', 'running')`).pluck().get(jobId) as
+      | string
+      | null;
+    const stages = { import: clock(createdAt, lastItem, counts.total - counts.pending, importDone, null) } as ImportProgress['stages'];
+    const rows = db
+      .prepare(
+        `SELECT t.kind, min(t.started_at) AS first, max(t.finished_at) AS last, avg(t.duration_ms) AS avgMs,
+                sum(t.state IN ('succeeded', 'failed')) AS done
+           FROM processing_tasks t
+          WHERE t.asset_id IN (SELECT asset_id FROM import_items WHERE job_id = ? AND state = 'imported' AND asset_id IS NOT NULL)
+            AND t.revision = (SELECT max(revision) FROM processing_tasks t2 WHERE t2.asset_id = t.asset_id AND t2.kind = t.kind)
+          GROUP BY t.kind`,
+      )
+      .all(jobId) as { kind: TaskKind; first: string | null; last: string | null; avgMs: number | null; done: number }[];
+    for (const kind of TASK_KINDS) {
+      const r = rows.find((x) => x.kind === kind);
+      const p = processing[kind];
+      stages[kind] = r ? clock(r.first, r.last, r.done, p.total > 0 && p.done + p.failed >= p.total, r.avgMs) : null;
+    }
+    return stages;
+  }
+
+  /** The most recent jobs, finished or not, for the import history. */
+  history(limit = 10): ImportProgress[] {
+    const ids = this.ctx.db.prepare(`SELECT id FROM import_jobs ORDER BY created_at DESC LIMIT ?`).pluck().all(limit) as string[];
+    return ids.map((id) => this.progress(id));
   }
 
   /** Latest-revision task states for the photos this job imported. */

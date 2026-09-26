@@ -7,6 +7,7 @@ export interface ManifestEntry {
   size: number;
 }
 
+export const listJobHistory = (limit = 8) => api<{ items: ImportJob[] }>(`/api/jobs/history?limit=${limit}`).then((r) => r.items);
 export const listJobs = () => api<{ items: ImportJob[] }>('/api/jobs').then((r) => r.items);
 export const startFolderImport = (path: string, albumId?: string) =>
   api<ImportJob>('/api/imports/folder', { method: 'POST', body: albumId ? { path, albumId } : { path } });

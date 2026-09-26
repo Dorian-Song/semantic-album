@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { Icon } from './Icon';
 
 interface Props {
   title: string;
@@ -32,7 +33,12 @@ export function Dialog({ title, onClose, children, wide }: Props) {
         onClose();
       }}
     >
-      <h2 id={titleId}>{title}</h2>
+      <header className="dialog-head">
+        <h2 id={titleId}>{title}</h2>
+        <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+          <Icon name="x" />
+        </button>
+      </header>
       {children}
     </dialog>
   );

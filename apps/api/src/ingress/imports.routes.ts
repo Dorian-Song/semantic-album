@@ -70,5 +70,10 @@ export function registerImportRoutes(app: FastifyInstance, { imports }: Services
   app.post<IdParams>('/api/imports/:id/cancel', { schema: { params: idParams } }, async (req) => imports.cancel(req.params.id));
 
   app.get('/api/jobs', async () => ({ items: imports.recent() }));
+  app.get<{ Querystring: { limit: number } }>(
+    '/api/jobs/history',
+    { schema: { querystring: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 50, default: 10 } } } } },
+    async (req) => ({ items: imports.history(req.query.limit) }),
+  );
   app.get<IdParams>('/api/jobs/:id', { schema: { params: idParams } }, async (req) => imports.progress(req.params.id));
 }

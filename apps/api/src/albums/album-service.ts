@@ -109,6 +109,23 @@ export class AlbumService {
     return this.get(id);
   }
 
+  /** How far descriptions and search indexing have got for this album's photos (latest revisions). */
+  processing(id: string): Record<'caption' | 'embedding', { done: number; total: number }> {
+    this.requireAlbum(id);
+    const rows = this.db
+      .prepare(
+        `SELECT t.kind, count(*) AS total, sum(t.state IN ('succeeded', 'failed')) AS done
+           FROM processing_tasks t JOIN album_assets aa ON aa.asset_id = t.asset_id AND aa.album_id = ?
+          WHERE t.kind IN ('caption', 'embedding')
+            AND t.revision = (SELECT max(revision) FROM processing_tasks t2 WHERE t2.asset_id = t.asset_id AND t2.kind = t.kind)
+          GROUP BY t.kind`,
+      )
+      .all(id) as { kind: 'caption' | 'embedding'; total: number; done: number }[];
+    const out = { caption: { done: 0, total: 0 }, embedding: { done: 0, total: 0 } };
+    for (const r of rows) out[r.kind] = { done: r.done, total: r.total };
+    return out;
+  }
+
   /** Deletes the album and its memberships. Photos also in other albums stay there. */
   delete(id: string): { orphaned: number } {
     return this.db.transaction(() => {

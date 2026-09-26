@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { thumbnailUrl } from '../../api/photos';
 import type { Album } from '../../api/types';
+import { Icon } from '../common/Icon';
 import { DeleteAlbumDialog, RenameAlbumDialog } from '../dialogs/AlbumDialogs';
 
 export function AlbumCard({ album }: { album: Album }) {
@@ -13,8 +14,14 @@ export function AlbumCard({ album }: { album: Album }) {
   };
   return (
     <li className="album-card">
-      <Link to={`/albums/${album.id}`} className="album-cover">
-        {album.coverPhotoId ? <img src={thumbnailUrl(album.coverPhotoId)} alt="" loading="lazy" /> : <span className="cover-empty" aria-hidden />}
+      <Link to={`/albums/${album.id}`} className="album-cover" aria-label={`${album.name}, ${album.photoCount} photos`}>
+        {album.coverPhotoId ? (
+          <img src={thumbnailUrl(album.coverPhotoId)} alt="" loading="lazy" />
+        ) : (
+          <span className="cover-empty">
+            <Icon name="image" size={30} />
+          </span>
+        )}
       </Link>
       <div className="album-meta">
         <div>
@@ -22,17 +29,19 @@ export function AlbumCard({ album }: { album: Album }) {
             {album.name}
           </Link>
           <p className="muted">
-            {album.photoCount} photo{album.photoCount === 1 ? '' : 's'}
+            {album.photoCount.toLocaleString()} photo{album.photoCount === 1 ? '' : 's'}
           </p>
         </div>
         <details className="menu" ref={menu}>
-          <summary aria-label={`Actions for ${album.name}`}>⋮</summary>
+          <summary aria-label={`Actions for ${album.name}`}>
+            <Icon name="more" />
+          </summary>
           <div className="menu-list" role="menu">
             <button type="button" role="menuitem" onClick={() => open('rename')}>
-              Rename
+              <Icon name="pencil" size={16} /> Rename
             </button>
             <button type="button" role="menuitem" className="danger" onClick={() => open('delete')}>
-              Delete
+              <Icon name="trash" size={16} /> Delete
             </button>
           </div>
         </details>

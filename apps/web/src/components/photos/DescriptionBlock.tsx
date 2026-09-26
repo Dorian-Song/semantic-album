@@ -5,6 +5,7 @@ import { regenerateCaption } from '../../api/photos';
 import { getProcessing, waitingReason } from '../../api/processing';
 import type { PhotoDetail } from '../../api/types';
 import { useRefreshLibrary } from '../../app/providers';
+import { Icon } from '../common/Icon';
 
 const PROVIDERS: Record<string, string> = { deepseek: 'DeepSeek', openai: 'OpenAI' };
 
@@ -30,10 +31,13 @@ export function DescriptionBlock({ photo, onEdit }: { photo: PhotoDetail; onEdit
   return (
     <>
       {d?.effective ? (
-        <>
-          <p className="description-meta">{d.manual ? 'Written by you' : `AI description${d.provider ? ` · ${PROVIDERS[d.provider] ?? d.provider}` : ''}`}</p>
+        <div className="description-box">
+          <p className="description-meta">
+            <Icon name={d.manual ? 'pencil' : 'sparkle'} size={14} />
+            {d.manual ? 'Written by you' : `AI description${d.provider ? ` · ${PROVIDERS[d.provider] ?? d.provider}` : ''}`}
+          </p>
           <p className="description">{d.effective}</p>
-        </>
+        </div>
       ) : (
         <p className="muted">No description yet.</p>
       )}
@@ -50,10 +54,14 @@ export function DescriptionBlock({ photo, onEdit }: { photo: PhotoDetail; onEdit
           <pre>{d.text}</pre>
         </details>
       )}
-      {d && d.objects.length > 0 && <p className="muted small">Visible: {d.objects.join(', ')}</p>}
+      {d && d.objects.length > 0 && (
+        <p className="muted small">
+          <span className="meta-label">Visible</span> {d.objects.join(', ')}
+        </p>
+      )}
       {d?.enrichment && d.enrichment.categories.length > 0 && (
         <p className="muted small">
-          Categories from n8n: {d.enrichment.categories.join(', ')}
+          <span className="meta-label">n8n categories</span> {d.enrichment.categories.join(', ')}
         </p>
       )}
       {photo.processing.enrichment?.state === 'failed' && (
@@ -78,12 +86,12 @@ export function DescriptionBlock({ photo, onEdit }: { photo: PhotoDetail; onEdit
         </p>
       )}
       <div className="button-row">
-        <button type="button" className="btn btn-small" onClick={onEdit}>
-          {d?.effective ? 'Edit description' : 'Add description'}
+        <button type="button" className="btn btn-soft btn-small" onClick={onEdit}>
+          <Icon name="pencil" size={16} /> {d?.effective ? 'Edit description' : 'Add description'}
         </button>
         {task && !busy && (
-          <button type="button" className="btn btn-small" disabled={regenerate.isPending} onClick={() => regenerate.mutate()}>
-            {task.state === 'failed' ? 'Try again' : 'Regenerate AI description'}
+          <button type="button" className="btn btn-ghost btn-small" disabled={regenerate.isPending} onClick={() => regenerate.mutate()}>
+            <Icon name="refresh" size={16} /> {task.state === 'failed' ? 'Try again' : 'Regenerate'}
           </button>
         )}
       </div>

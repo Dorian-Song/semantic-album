@@ -20,17 +20,21 @@ export function registerPhotoRoutes(app: FastifyInstance, { albums, assets, phot
     return reply.send(createReadStream(abs));
   }
 
-  app.get<{ Querystring: PageQuery & { order: 'date' | 'recent' } }>(
+  app.get<{ Querystring: PageQuery & { order: 'date' | 'recent'; kind?: string } }>(
     '/api/photos',
     {
       schema: {
         querystring: {
           ...pageQuery,
-          properties: { ...pageQuery.properties, order: { type: 'string', enum: ['date', 'recent'], default: 'date' } },
+          properties: {
+            ...pageQuery.properties,
+            order: { type: 'string', enum: ['date', 'recent'], default: 'date' },
+            kind: { type: 'string', enum: ['photo', 'screenshot', 'document', 'illustration', 'other'] },
+          },
         },
       },
     },
-    async (req) => photos.listAll(req.query.offset, req.query.limit, req.query.order),
+    async (req) => photos.listAll(req.query.offset, req.query.limit, req.query.order, req.query.kind),
   );
 
   app.get<IdParams & { Querystring: { album?: string } }>(

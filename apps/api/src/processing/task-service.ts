@@ -37,6 +37,19 @@ export class ServiceUnavailableError extends Error {
   }
 }
 
+/** Live rates from the last minutes of work in this process (not persisted). */
+export interface Throughput {
+  /** Tasks finished per second over the last 30 seconds. */
+  perSecond: number;
+  /** Tasks finished per second over the last 5 minutes. */
+  perSecond5m: number;
+  /** Mean and 95th-percentile run time of the last 500 finished tasks. */
+  avgMs: number | null;
+  p95Ms: number | null;
+  /** Finished since the process started. */
+  finishedSinceStart: number;
+}
+
 export interface KindSummary {
   kind: TaskKind;
   /** A handler is registered (the feature exists in this build). */
@@ -50,6 +63,7 @@ export interface KindSummary {
   running: number;
   succeeded: number;
   failed: number;
+  throughput: Throughput;
 }
 
 export interface TaskOptions {
@@ -73,6 +87,9 @@ export class TaskService {
   private timer: NodeJS.Timeout | null = null;
   private started = false;
   private stopping = false;
+  /** Recent finishes per kind: [finished at (ms), run time (ms)]. */
+  private readonly recent = new Map<TaskKind, [number, number][]>();
+  private readonly finishedCount = new Map<TaskKind, number>();
 
   constructor(
     private readonly ctx: AppContext,
@@ -168,6 +185,7 @@ export class TaskService {
     const started = Date.now();
     try {
       const result = await handler.run(task);
+      this.recordFinish(task.kind, Date.now() - started);
       const now = nowIso();
       db.prepare(
         `UPDATE processing_tasks SET state = 'succeeded', error = NULL, next_attempt_at = NULL, provider = COALESCE(?, provider),
@@ -189,6 +207,7 @@ export class TaskService {
         db.prepare(
           `UPDATE processing_tasks SET state = 'failed', error = ?, finished_at = ?, duration_ms = ?, updated_at = ? WHERE id = ?`,
         ).run(message, now.toISOString(), Date.now() - started, now.toISOString(), task.id);
+        this.recordFinish(task.kind, Date.now() - started);
         this.log.warn({ kind: task.kind, assetId: task.assetId, attempts: task.attempts, err: message }, 'processing task failed');
       } else {
         const delay = Math.min(this.opts.maxDelayMs, this.opts.baseDelayMs * 2 ** (task.attempts - 1));
@@ -197,6 +216,32 @@ export class TaskService {
         ).run(message, new Date(now.getTime() + delay).toISOString(), now.toISOString(), task.id);
       }
     }
+  }
+
+  private recordFinish(kind: TaskKind, ms: number): void {
+    let list = this.recent.get(kind);
+    if (!list) this.recent.set(kind, (list = []));
+    const now = Date.now();
+    list.push([now, ms]);
+    // Keep five minutes, and never more than 20,000 entries.
+    while (list.length > 0 && (list[0]![0] < now - 300_000 || list.length > 20_000)) list.shift();
+    this.finishedCount.set(kind, (this.finishedCount.get(kind) ?? 0) + 1);
+  }
+
+  throughput(kind: TaskKind): Throughput {
+    const list = this.recent.get(kind) ?? [];
+    const now = Date.now();
+    const last30 = list.filter(([at]) => at >= now - 30_000).length;
+    const span5m = list.length ? Math.max(1, Math.min(300_000, now - list[0]![0])) : 1;
+    const times = list.slice(-500).map(([, ms]) => ms).sort((a, b) => a - b);
+    const round = (x: number) => Math.round(x * 10) / 10;
+    return {
+      perSecond: round(last30 / 30),
+      perSecond5m: round((list.length / span5m) * 1000),
+      avgMs: times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : null,
+      p95Ms: times.length ? times[Math.min(times.length - 1, Math.floor(times.length * 0.95))]! : null,
+      finishedSinceStart: this.finishedCount.get(kind) ?? 0,
+    };
   }
 
   /** Lifts a pause early, e.g. after the user saves a new API key. */
@@ -267,8 +312,11 @@ export class TaskService {
     const now = nowIso();
     const rows = this.ctx.db
       .prepare(
+        // Latest revision per photo and kind, so counts are photos rather than attempts over time.
         `SELECT kind, state, (state = 'pending' AND next_attempt_at > ?) AS waiting, count(*) AS n
-           FROM processing_tasks GROUP BY kind, state, waiting`,
+           FROM processing_tasks t
+          WHERE revision = (SELECT max(revision) FROM processing_tasks t2 WHERE t2.asset_id = t.asset_id AND t2.kind = t.kind)
+          GROUP BY kind, state, waiting`,
       )
       .all(now) as { kind: TaskKind; state: string; waiting: number; n: number }[];
     return TASK_KINDS.map((kind) => {
@@ -284,6 +332,7 @@ export class TaskService {
         running: 0,
         succeeded: 0,
         failed: 0,
+        throughput: this.throughput(kind),
       };
       for (const r of rows.filter((x) => x.kind === kind)) {
         if (r.state === 'pending') {

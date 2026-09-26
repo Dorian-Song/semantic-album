@@ -83,8 +83,12 @@ export class PhotoQueries {
   }
 
   /** `recent` = most recently added first (Home); `date` = gallery order (All Photos). */
-  listAll(offset: number, limit: number, order: 'date' | 'recent' = 'date'): Page<PhotoSummary> {
-    const items = this.db.prepare(`${order === 'recent' ? RECENT_ORDER : ALL_ORDER} LIMIT ? OFFSET ?`).all(limit, offset) as PhotoSummary[];
+  listAll(offset: number, limit: number, order: 'date' | 'recent' = 'date', kind?: string): Page<PhotoSummary> {
+    const base = order === 'recent' ? RECENT_ORDER : ALL_ORDER;
+    const sql = kind
+      ? base.replace('ORDER BY', `WHERE EXISTS (SELECT 1 FROM descriptions d WHERE d.asset_id = a.id AND d.ai_kind = ?) ORDER BY`)
+      : base;
+    const items = this.db.prepare(`${sql} LIMIT ? OFFSET ?`).all(...(kind ? [kind] : []), limit, offset) as PhotoSummary[];
     const total = this.db.prepare('SELECT count(DISTINCT asset_id) FROM album_assets').pluck().get() as number;
     return { items, total, offset, limit };
   }

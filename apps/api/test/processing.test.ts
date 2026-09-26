@@ -46,6 +46,11 @@ describe('processing tasks', () => {
       assert.equal(kind(t, 'caption').pausedReason, 'AI descriptions are turned off in Settings');
       assert.ok(t.services.ctx.db.prepare(`SELECT attempts FROM processing_tasks WHERE kind = 'caption'`).pluck().all().every((a) => a === 0));
       assert.ok(job.timings && job.timings.stage.count === 3 && job.timings.ingest.p95Ms >= 0);
+      assert.equal(job.stages.import?.done, 3);
+      assert.ok(job.stages.import!.finishedAt && job.stages.import!.perSecond > 0);
+      assert.equal(job.stages.caption, null, 'no caption has run yet');
+      const history = JSON.parse((await t.app.inject({ method: 'GET', url: '/api/jobs/history' })).body).items;
+      assert.deepEqual(history.map((j: { id: string }) => j.id), [job.id]);
     } finally {
       await t.close();
     }
@@ -69,6 +74,9 @@ describe('processing tasks', () => {
       await t.services.tasks.idle();
       assert.equal(peak, 2);
       assert.equal(kind(t, 'embedding').succeeded, 8);
+      const tp = kind(t, 'embedding').throughput;
+      assert.equal(tp.finishedSinceStart, 8);
+      assert.ok(tp.perSecond > 0 && tp.avgMs! >= 10, JSON.stringify(tp));
       assert.equal(kind(t, 'caption').succeeded, 0, 'caption is paused and unaffected by the embedding pool');
     } finally {
       await t.close();

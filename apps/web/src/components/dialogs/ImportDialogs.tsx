@@ -5,7 +5,8 @@ import { startFolderImport } from '../../api/imports';
 import { useRefreshLibrary } from '../../app/providers';
 import { imageFiles, rootFolderName, startBrowserImport } from '../../hooks/uploads';
 import { Dialog } from '../common/Dialog';
-import { FormError } from '../common/states';
+import { Icon } from '../common/Icon';
+import { Callout, FormError } from '../common/states';
 import { AlbumPicker, type AlbumChoice } from './AlbumPicker';
 
 export const IMAGE_ACCEPT = 'image/*,.heic,.heif,.hif,.avif';
@@ -70,12 +71,16 @@ export function ImportPhotosDialog({ album, onClose }: { album?: { id: string; n
           }
         }}
       >
-        <div className="button-row">
-          <button type="button" className="btn" onClick={() => filesRef.current?.click()}>
-            Choose photos
+        <div className="pick-grid">
+          <button type="button" className="pick" onClick={() => filesRef.current?.click()}>
+            <Icon name="photos" size={26} />
+            <strong>Choose photos</strong>
+            <span className="muted small">JPEG, PNG, HEIC, AVIF, WebP…</span>
           </button>
-          <button type="button" className="btn" onClick={() => folderRef.current?.click()}>
-            Choose a folder
+          <button type="button" className="pick" onClick={() => folderRef.current?.click()}>
+            <Icon name="folder" size={26} />
+            <strong>Choose a folder</strong>
+            <span className="muted small">Includes subfolders</span>
           </button>
           <FileInput inputRef={filesRef} onFiles={pick} />
           <FileInput inputRef={folderRef} folder onFiles={pick} />
@@ -147,13 +152,24 @@ export function ImportFolderDialog({ onClose }: { onClose: () => void }) {
           }
         }}
       >
-        <label className="field">
-          <span>Folder path</span>
-          <input autoFocus required placeholder="/home/you/Pictures/Holiday" value={path} onChange={(e) => setPath(e.target.value)} spellCheck={false} />
-        </label>
-        <p className="dialog-note">
-          A folder on the computer running Album. Subfolders are included. You can delete or move the folder afterwards; Album keeps its own copies.
-        </p>
+        <div className="folder-card">
+          <span className="folder-icon">
+            <Icon name="folder" size={30} />
+          </span>
+          <label className="field">
+            <span>Folder path</span>
+            <input autoFocus required placeholder="/home/you/Pictures/Holiday" value={path} onChange={(e) => setPath(e.target.value)} spellCheck={false} />
+          </label>
+          <p className="muted small">
+            A folder on the computer running Album, including subfolders. Photos are copied into Album’s own library, so the folder can be moved or deleted
+            afterwards.
+          </p>
+        </div>
+        {mode === 'new' && debounced && suggestion.data && suggestion.data !== debounced && (
+          <Callout title={`An album named “${debounced}” already exists.`}>
+            <p>The new album will be called “{suggestion.data}”. You can rename it later.</p>
+          </Callout>
+        )}
         <fieldset className="album-picker">
           <legend className="dialog-subheading">Import into</legend>
           <label className="album-option">
@@ -173,7 +189,7 @@ export function ImportFolderDialog({ onClose }: { onClose: () => void }) {
             Cancel
           </button>
           <button type="submit" className="btn btn-primary" disabled={busy || !ready}>
-            Import
+            <Icon name="folder" /> {mode === 'new' ? 'Import as New Album' : 'Import'}
           </button>
         </div>
       </form>
