@@ -1,23 +1,15 @@
-import path from 'node:path';
+import { createApp } from './app.js';
 import { loadEnv } from './config/env.js';
-import { openDatabase } from './db/connection.js';
-import { migrate } from './db/migrate.js';
-import { ensureDataDir } from './storage/data-dir.js';
-import { buildServer } from './ingress/http.js';
 
 const env = loadEnv();
-ensureDataDir(env.dataDir);
+const { app, services } = await createApp(env, { level: process.env.LOG_LEVEL ?? 'info' });
 
-const db = openDatabase(path.join(env.dataDir, 'album.sqlite'));
-const applied = migrate(db);
-
-const app = buildServer(db, env);
-if (applied.length > 0) app.log.info({ applied }, 'database migrations applied');
+services.imports.recover();
+services.gc.start();
 
 async function shutdown(signal: string): Promise<void> {
   app.log.info({ signal }, 'shutting down');
   await app.close();
-  db.close();
   process.exit(0);
 }
 process.once('SIGINT', () => void shutdown('SIGINT'));

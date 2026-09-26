@@ -227,13 +227,17 @@ These routes are a proposed contract; use consistent IDs, pagination, error bodi
 
 | Route | Behavior |
 | --- | --- |
-| `GET/POST /api/albums`, `PATCH/DELETE /api/albums/:id` | List/create/rename/delete albums. |
-| `GET /api/albums/:id/photos` | Paginated album gallery. |
+| `GET/POST /api/albums`, `GET/PATCH/DELETE /api/albums/:id` | List/create/get/rename/delete albums. Names are unique ignoring case. |
+| `GET /api/albums/name-suggestion?name=` | The unique name the backend would assign now (for import dialogs); the final name is assigned on creation. |
+| `GET /api/albums/:id/photos` | Paginated album gallery, newest capture first (photos without a capture time by when they were added). |
+| `GET /api/photos?order=date\|recent` | All photos in the library: gallery order, or most recently added first (Home). |
+| `GET /api/photos/:id/context?album=` | Position, previous/next, and a filmstrip window within an album or all photos. |
 | `POST /api/imports` | Create a selected-file job with manifest. Body has either `albumId` or `newAlbumName`; a new name is made unique by the backend. The browser folder picker uses `newAlbumName` = selected root folder name. |
 | `POST /api/imports/:id/files`, `POST /api/imports/:id/finish` | Upload one file at a time; close intake when all items are accounted for. |
 | `POST /api/imports/folder` | Import a host folder; create an album from folder name unless target album ID supplied; returns job ID. |
-| `GET /api/jobs/:id` | Durable import, processing, and export progress. |
-| `GET /api/photos/:id`, `GET /api/photos/:id/original`, `GET /api/photos/:id/display`, `GET /api/photos/:id/thumbnail` | Detail and image delivery. `display` returns a browser-renderable image. |
+| `POST /api/imports/:id/cancel` | Cancel an unfinished import; already imported photos stay. |
+| `GET /api/jobs`, `GET /api/jobs/:id` | Unfinished and recently finished jobs; durable import, processing, and export progress. |
+| `GET /api/photos/:id?album=`, `GET /api/photos/:id/original`, `GET /api/photos/:id/display`, `GET /api/photos/:id/thumbnail` | Detail (filename as it appears in `album`, if given) and image delivery. `display` returns a browser-renderable image. |
 | `PATCH /api/photos/:id/description` | Set/clear manual description override. |
 | `POST /api/photos/:id/albums`, `DELETE /api/albums/:id/photos/:photoId` | Add/remove a membership. |
 | `POST /api/photos/:id/move`, `DELETE /api/photos/:id` | Move between albums / delete from library. |

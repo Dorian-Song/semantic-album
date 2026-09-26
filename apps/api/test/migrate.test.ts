@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { openDatabase } from '../src/db/connection.js';
 import { migrate } from '../src/db/migrate.js';
 
@@ -14,7 +15,8 @@ function tempDb() {
 test('migrations apply once and are idempotent', () => {
   const { db, cleanup } = tempDb();
   try {
-    assert.deepEqual(migrate(db), ['0001_init.sql']);
+    const all = fs.readdirSync(fileURLToPath(new URL('../src/db/migrations/', import.meta.url))).sort();
+    assert.deepEqual(migrate(db), all);
     assert.deepEqual(migrate(db), []);
     assert.equal(db.prepare('SELECT count(*) FROM model_config').pluck().get(), 1);
   } finally {

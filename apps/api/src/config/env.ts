@@ -1,3 +1,4 @@
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,6 +12,12 @@ export interface Env {
   n8nBaseUrl: string | null;
   vllmEnabled: boolean;
   vllmBaseUrl: string;
+  /** Parallel file ingestions (hash + decode + derivatives). */
+  importConcurrency: number;
+  /** Files larger than this are skipped as too_large. */
+  maxImportBytes: number;
+  /** How long an asset with no album membership is kept before cleanup. */
+  assetGraceMs: number;
 }
 
 function int(name: string, fallback: number): number {
@@ -35,5 +42,8 @@ export function loadEnv(): Env {
     n8nBaseUrl: optionalUrl('N8N_BASE_URL'),
     vllmEnabled: process.env.VLLM_ENABLED === 'true',
     vllmBaseUrl: `http://127.0.0.1:${int('VLLM_PORT', 8000)}`,
+    importConcurrency: int('IMPORT_CONCURRENCY', Math.max(1, os.availableParallelism() - 1)),
+    maxImportBytes: int('MAX_IMPORT_MB', 200) * 1024 * 1024,
+    assetGraceMs: int('ASSET_GRACE_HOURS', 24) * 3600 * 1000,
   };
 }

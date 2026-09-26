@@ -1,5 +1,3 @@
-import { getJson } from './client';
-
 export type ServiceState = 'ok' | 'unreachable' | 'disabled' | 'not_configured';
 
 export interface Health {
@@ -7,6 +5,8 @@ export interface Health {
   services: { database: ServiceState; n8n: ServiceState; embedding: ServiceState };
 }
 
+/** 503 still carries a health body, so read it regardless of status. */
 export async function fetchHealth(): Promise<Health> {
-  return (await getJson<Health>('/api/health')).body;
+  const res = await fetch('/api/health');
+  return (await res.json()) as Health;
 }
