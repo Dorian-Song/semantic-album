@@ -44,6 +44,13 @@ export function DescriptionBlock({ photo, onEdit }: { photo: PhotoDetail; onEdit
           ))}
         </ul>
       )}
+      {d?.text && (
+        <details className="image-text">
+          <summary>Text in this image</summary>
+          <pre>{d.text}</pre>
+        </details>
+      )}
+      {d && d.objects.length > 0 && <p className="muted small">Visible: {d.objects.join(', ')}</p>}
       {d?.enrichment && d.enrichment.categories.length > 0 && (
         <p className="muted small">
           Categories from n8n: {d.enrichment.categories.join(', ')}

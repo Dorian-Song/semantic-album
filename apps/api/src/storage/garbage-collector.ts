@@ -1,5 +1,6 @@
 import type { FastifyBaseLogger } from 'fastify';
 import type { AppContext } from '../context.js';
+import { removePhotoText } from '../search/fts-index.js';
 import { nowIso } from '../shared/ids.js';
 
 interface Candidate {
@@ -59,7 +60,7 @@ export class GarbageCollector {
             )
             .get(c.id, c.orphanedAt);
           if (!still) return false;
-          db.prepare('DELETE FROM photo_fts WHERE asset_id = ?').run(c.id);
+          removePhotoText(db, c.id);
           db.prepare('DELETE FROM assets WHERE id = ?').run(c.id); // cascades to descriptions and tasks
           db.prepare('INSERT OR IGNORE INTO n8n_purge_queue (asset_id, requested_at) VALUES (?, ?)').run(c.id, nowIso());
           return true;

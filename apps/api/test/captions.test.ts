@@ -216,3 +216,41 @@ describe('AI descriptions', () => {
     }
   });
 });
+
+describe('long answers', () => {
+  test('an answer cut off at the output limit is retried once in compact form', async () => {
+    const seen: string[] = [];
+    const server = http.createServer((req, res) => {
+      let raw = '';
+      req.on('data', (c) => (raw += c));
+      req.on('end', () => {
+        const prompt = JSON.parse(raw).input[0].content[0].text as string;
+        seen.push(prompt);
+        res.writeHead(200, { 'content-type': 'application/json' });
+        const truncated = { status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' }, output: [] };
+        const text = JSON.stringify({ caption: 'A tennis court with many logos.', objects: ['racket'], tags: ['tennis'], kind: 'photo', text: 'SPEEDLINK' });
+        res.end(JSON.stringify(prompt.includes('Keep the answer short') ? { status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text }] }] } : truncated));
+      });
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const t = await testApp();
+    try {
+      await t.app.inject({
+        method: 'PUT',
+        url: '/api/settings',
+        payload: { captionsEnabled: true, deepseek: { baseUrl: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, apiKey: 'sk-test-long' } },
+      });
+      const album = JSON.parse((await t.app.inject({ method: 'POST', url: '/api/albums', payload: { name: 'L' } })).body).id;
+      const data = await jpeg(9).toBuffer();
+      const job = JSON.parse((await t.app.inject({ method: 'POST', url: '/api/imports', payload: { albumId: album, files: [{ key: 'k', name: 'k.jpg', size: data.length }] } })).body);
+      const { payload, headers } = multipart('k.jpg', data);
+      await t.app.inject({ method: 'POST', url: `/api/imports/${job.id}/files?itemKey=k`, payload, headers });
+      await t.services.tasks.idle();
+      assert.equal(seen.length, 2);
+      assert.equal(t.services.ctx.db.prepare(`SELECT ai_text FROM descriptions`).pluck().get(), 'SPEEDLINK');
+    } finally {
+      await t.close();
+      await new Promise((r) => server.close(r));
+    }
+  });
+});

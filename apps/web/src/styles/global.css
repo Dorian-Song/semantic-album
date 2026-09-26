@@ -1082,3 +1082,18 @@ code {
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   }
 }
+.image-text summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+}
+.image-text pre {
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: var(--color-sidebar);
+  padding: 8px 10px;
+  border-radius: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}

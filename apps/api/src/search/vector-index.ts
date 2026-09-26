@@ -19,11 +19,13 @@ export class VectorIndex {
   constructor(
     private readonly db: Db,
     readonly dimension: number,
+    /** photo_vectors (image) or photo_text_vectors (description text). */
+    private readonly table: 'photo_vectors' | 'photo_text_vectors' = 'photo_vectors',
   ) {}
 
   private load(): void {
     if (this.loaded) return;
-    for (const row of this.db.prepare('SELECT asset_id AS id, embedding FROM photo_vectors').iterate() as Iterable<{ id: string; embedding: Buffer }>) {
+    for (const row of this.db.prepare(`SELECT asset_id AS id, embedding FROM ${this.table}`).iterate() as Iterable<{ id: string; embedding: Buffer }>) {
       this.vectors.set(row.id, toFloat32(row.embedding));
     }
     this.loaded = true;
@@ -35,11 +37,30 @@ export class VectorIndex {
     const normalised = normalise(vector);
     this.db
       .prepare(
-        `INSERT INTO photo_vectors (asset_id, embedding, created_at) VALUES (?, ?, ?)
+        `INSERT INTO ${this.table} (asset_id, embedding, created_at) VALUES (?, ?, ?)
          ON CONFLICT (asset_id) DO UPDATE SET embedding = excluded.embedding, created_at = excluded.created_at`,
       )
       .run(assetId, Buffer.from(normalised.buffer, normalised.byteOffset, normalised.byteLength), nowIso());
     if (this.loaded) this.vectors.set(assetId, normalised);
+  }
+
+  delete(assetId: string): void {
+    this.db.prepare(`DELETE FROM ${this.table} WHERE asset_id = ?`).run(assetId);
+    this.vectors.delete(assetId);
+  }
+
+  /** Cosine similarity of every stored photo (optionally only `eligible`) to the query. */
+  scoreAll(query: Float32Array, eligible: ReadonlySet<string> | null): Map<string, number> {
+    this.load();
+    const q = normalise(query);
+    const out = new Map<string, number>();
+    for (const [assetId, v] of this.vectors) {
+      if (eligible && !eligible.has(assetId)) continue;
+      let dot = 0;
+      for (let i = 0; i < v.length; i++) dot += v[i]! * q[i]!;
+      out.set(assetId, dot);
+    }
+    return out;
   }
 
   get size(): number {

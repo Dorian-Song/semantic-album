@@ -62,3 +62,25 @@ This log records where the design differs from the *Team Formation and Role Assi
 
 **Original plan:** start caption concurrency around 4 and not adopt a provider's advertised ceiling as the worker count.
 **Decision (project owner):** 200 requests in flight to DeepSeek, whose account allows 2,500; 4 was far too slow for a 5,000–10,000-photo import. Supporting changes: the setting allows up to 500, originals over 5 MB are sent as the 2560 px derivative to bound memory, and n8n enrichment runs 16 at a time so it keeps up. A 429 still pauses the whole caption queue instead of retrying each photo.
+
+## 2026-09-26 — Retrieval improvements, decided by measurement
+
+**Question:** how to make search better, and whether structured AI output (object lists, transcribed text, image kind) helps or overfits.
+**Method:** two benchmarks against the running system, re-run after each change. `scripts/search-benchmark.mjs` uses 5,000 COCO val2017 photos with 500 human-caption queries (rank of the described photo) and 78 object-name queries ("banana", "handbag"; precision of the top 10 against COCO's annotations). `scripts/screens-benchmark.mjs` uses 14 synthetic screenshots (chat, receipt, boarding pass, long e-mail, ...) as a counterweight, because COCO has no screenshots or documents. At 500 queries, Recall@1 has a standard error of about 2 points, so smaller differences are treated as noise.
+
+| Step | Words R@1 / R@10 / obj P@10 | Meaning | Both | Screens top-1 (M / B) |
+| --- | --- | --- | --- | --- |
+| Baseline | 24.6 / 56.4 / 95.8 | 37.0 / 73.8 / 94.4 | 36.4 / 70.8 / 98.3 | 10 / 12 of 12 |
+| Porter stemming, weighted fusion, description-text vector | 26.0 / 55.6 / 96.8 | 39.8 / 77.4 / 95.5 | 39.2 / 75.6 / 97.9 | 14 / 14 of 14 |
+| + structured prompt (objects in the tags column) | 23.4 / 54.0 / 95.5 | 39.0 / 77.0 / 95.8 | 37.0 / 77.6 / 97.9 | 12 / 14 |
+| objects in a low-weight column | 23.4 / 54.2 / 92.9 | 39.4 / 76.8 / 94.7 | 36.4 / 78.2 / 97.2 | 12 / 14 |
+| **main 5 objects with tags, rest low-weight; Both weights 1 / 0.5 / 0.25 (final)** | 24.2 / 56.6 / 95.9 | 39.6 / 76.8 / 94.9 | 37.4 / 78.8 / 98.2 | 12 / 14 |
+
+**Decisions:**
+- **Meaning blends two vectors per photo**: the image and the description text, 50/50. In an offline comparison on the same photos, a single vector of image and text together scored worst on object queries (87% vs 93% image-only), while the blend was best (caption Recall@1 26→34%, object P@10 93→95%).
+- **Words uses Porter stemming** ("skateboarding" finds "skateboard") and no blanket prefix matching, which had made "car" match "carrot". Prefix matching remains only as a fallback for words of 4+ letters that match nothing. An unstemmed twin index keeps typo corrections readable.
+- **Both weights Words by query length** (1 for 1–2 content words, 0.5 for 3–4, 0.25 for longer): keywords are precise for "stop sign" and noisy for full sentences.
+- **Structured descriptions are kept, but indexed conservatively.** On COCO photos the new prompt is neutral, within noise, once indexed well. Putting all 10–25 objects at tag weight, or none, both hurt (Doc2Query-- makes the same point: document expansion helps only when noise is controlled). The first five objects, which the model lists as the most prominent, weigh like tags; the rest count little. Transcribed text gets its own column. The image kind powers a Type filter. These fields are for functionality (exact text in long screenshots, filtering, export) rather than for COCO scores.
+- **Answers cut off at the output limit** (walls of repeated logos) are retried once with a compact instruction instead of failing.
+- **Not done:** a reranker (Qwen3-VL-Reranker would not fit next to the embedding model in 8 GB), query rewriting by an LLM (adds a cloud call and a second of latency to every search), and a controlled vocabulary or synonym list (it would fit COCO's 80 categories and nothing else). Meaning remains weakest on small objects (wine glass, handbag: 5–7 of 10); Both compensates (9–10 of 10).
+- Search p95 rose from about 63 ms to about 90 ms with the second vector scan, well within the target.

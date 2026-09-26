@@ -30,6 +30,11 @@ export interface PhotoDetail extends PhotoSummary {
     model: string | null;
     /** Returned by the n8n workflow, if it has run. */
     enrichment: { categories: string[]; keywords: string[]; rowId: number; storedAt: string } | null;
+    /** Distinct visible things listed by the AI. */
+    objects: string[];
+    /** Text transcribed from the image by the AI. */
+    text: string | null;
+    kind: string | null;
   } | null;
   albums: AlbumRef[];
 }
@@ -103,7 +108,8 @@ export class PhotoQueries {
                 (SELECT display_filename FROM album_assets WHERE asset_id = a.id
                   ORDER BY album_id = ? DESC, added_at LIMIT 1) AS filename,
                 d.asset_id AS hasDescription, d.ai_caption AS ai, d.manual_caption AS manual, d.ai_tags AS tags,
-                d.provider AS provider, d.model AS model, d.enrichment AS enrichment
+                d.provider AS provider, d.model AS model, d.enrichment AS enrichment,
+                d.ai_objects AS objects, d.ai_text AS aiText, d.ai_kind AS kind
            FROM assets a LEFT JOIN descriptions d ON d.asset_id = a.id
           WHERE a.id = ? AND a.orphaned_at IS NULL`,
       )
@@ -136,6 +142,9 @@ export class PhotoQueries {
             provider: row.provider as string | null,
             model: row.model as string | null,
             enrichment: row.enrichment ? JSON.parse(row.enrichment as string) : null,
+            objects: JSON.parse((row.objects as string) ?? '[]') as string[],
+            text: row.aiText as string | null,
+            kind: row.kind as string | null,
           }
         : null,
       albums: this.albumsOf(assetId),

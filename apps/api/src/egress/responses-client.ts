@@ -1,3 +1,4 @@
+import { OutputTooLongError } from '../adapters/vision-provider.js';
 import { PermanentTaskError, ServiceUnavailableError } from '../processing/task-service.js';
 
 /**
@@ -85,5 +86,6 @@ export function assertCompleted(provider: string, json: Record<string, unknown>)
   const status = json.status;
   if (status === undefined || status === 'completed') return;
   const reason = (json.incomplete_details as { reason?: string } | undefined)?.reason ?? providerMessage(json) ?? String(status);
+  if (reason === 'max_output_tokens') throw new OutputTooLongError(`${provider} ran past the output limit`);
   throw new PermanentTaskError(`${provider} did not finish the description (${reason})`);
 }

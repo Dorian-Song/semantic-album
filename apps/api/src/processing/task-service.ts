@@ -3,8 +3,8 @@ import type { AppContext } from '../context.js';
 import { conflict, notFound } from '../shared/errors.js';
 import { newId, nowIso } from '../shared/ids.js';
 
-export type TaskKind = 'caption' | 'embedding' | 'enrichment';
-export const TASK_KINDS: readonly TaskKind[] = ['caption', 'embedding', 'enrichment'];
+export type TaskKind = 'caption' | 'embedding' | 'enrichment' | 'text_embedding';
+export const TASK_KINDS: readonly TaskKind[] = ['caption', 'embedding', 'enrichment', 'text_embedding'];
 
 export interface ClaimedTask {
   id: string;

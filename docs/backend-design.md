@@ -168,6 +168,14 @@ Scope is one album, selected album IDs, or all. Optional metadata filters are ca
 - **Meaning** ranks every eligible photo by similarity and keeps the top 300; **Both** fuses the Words and Meaning top-300 lists with reciprocal-rank fusion (k = 60). Query vectors are cached (200 most recent).
 - **Measured on the development machine** (8 GB RTX 4060 Laptop, vLLM 0.30.0, 0.8 GPU memory utilisation): about 6.1 GB of GPU memory in use, 33–80 s start-up, about 12 photos/s embedded at 6 requests in flight, and about 25 ms per text query. `scripts/search-benchmark.mjs` measures recall and p50/p95 search latency on an imported COCO library.
 
+### Retrieval v2 (measured; see decision log "Retrieval improvements")
+
+- Description prompt revision 2 returns `caption`, `objects` (most prominent first), `tags`, `kind` (photo, screenshot, document, illustration, other), and `text` (transcribed, repeated text once). They are stored in `descriptions.ai_objects`, `ai_text`, and `ai_kind`. `POST /api/processing/caption/refresh-outdated` re-describes photos from an older revision; manual text is kept.
+- `photo_fts` columns and bm25 weights: caption 1.0, tags + first five objects + n8n categories 2.0, remaining objects 0.5, text in image 1.0, filenames 0.5; Porter stemming. `photo_words` (unstemmed, contentless) supplies typo corrections.
+- Each photo has a second vector in `photo_text_vectors`, embedded from its effective description, tags, and the start of its transcribed text by the `text_embedding` task, which runs after any description change. Meaning ranks by 0.5 × image + 0.5 × text similarity; a photo without a text vector yet uses its image score shifted by the mean difference.
+- Both fuses with weights Words 1 / 0.5 / 0.25 for 1–2 / 3–4 / 5+ content words, Meaning 1.
+- `kind` is a search filter (`POST /api/search` `kind`, facet `kinds`).
+
 ### Latency target and progressive results
 
 The target is p95 search latency under 3 seconds on a 10,000-photo library, measured with a fixed query set and logged per phase (query embedding, vector scan, FTS, hydration). `words` alone should be far below this.

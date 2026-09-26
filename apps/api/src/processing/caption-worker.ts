@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import { captionWithDeepSeek } from '../adapters/deepseek-responses.js';
 import { captionWithOpenAI } from '../adapters/openai-responses.js';
-import { InvalidCaptionError, PROMPT_REVISION, type CaptionImage, type CaptionResult } from '../adapters/vision-provider.js';
+import { InvalidCaptionError, OutputTooLongError, PROMPT_REVISION, type CaptionImage, type CaptionResult } from '../adapters/vision-provider.js';
 import type { AppContext } from '../context.js';
 import { refreshPhotoText } from '../search/fts-index.js';
 import type { SettingsService } from '../settings/settings-service.js';
@@ -35,18 +35,24 @@ export class CaptionWorker implements TaskHandler {
 
     const image = await this.loadImage(task.assetId);
     let result: CaptionResult;
+    const deepseek = { baseUrl: s.deepseek.baseUrl, model: s.deepseek.model, apiKey: s.deepseek.apiKey };
     try {
-      result = await captionWithDeepSeek({ baseUrl: s.deepseek.baseUrl, model: s.deepseek.model, apiKey: s.deepseek.apiKey }, image);
+      try {
+        result = await captionWithDeepSeek(deepseek, image);
+      } catch (err) {
+        if (!(err instanceof OutputTooLongError)) throw err;
+        result = await captionWithDeepSeek(deepseek, image, true); // ask for a shorter answer once
+      }
     } catch (err) {
       if (err instanceof ServiceUnavailableError) throw err; // account-wide: pause, do not spend OpenAI money
-      const permanent = err instanceof PermanentTaskError || err instanceof InvalidCaptionError;
+      const permanent = err instanceof PermanentTaskError || err instanceof InvalidCaptionError || err instanceof OutputTooLongError;
       const lastAttempt = permanent || task.attempts >= this.maxAttempts;
       const fb = s.openai;
       if (!lastAttempt || !fb.fallbackEnabled || !fb.apiKey || !fb.model) {
-        throw err instanceof InvalidCaptionError ? new PermanentTaskError(err.message) : err;
+        throw err instanceof InvalidCaptionError || err instanceof OutputTooLongError ? new PermanentTaskError(err.message) : err;
       }
       try {
-        result = await captionWithOpenAI({ baseUrl: fb.baseUrl, model: fb.model, apiKey: fb.apiKey }, image);
+        result = await captionWithOpenAI({ baseUrl: fb.baseUrl, model: fb.model, apiKey: fb.apiKey }, image, true);
       } catch (fallbackErr) {
         const why = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
         throw new PermanentTaskError(`${(err as Error).message}; OpenAI fallback also failed: ${why}`);
@@ -73,15 +79,16 @@ export class CaptionWorker implements TaskHandler {
     db.transaction(() => {
       if (!db.prepare('SELECT 1 FROM assets WHERE id = ?').get(task.assetId)) return;
       db.prepare(
-        `INSERT INTO descriptions (asset_id, ai_caption, ai_tags, provider, model, prompt_revision, enrichment_state, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+        `INSERT INTO descriptions (asset_id, ai_caption, ai_tags, ai_objects, ai_text, ai_kind, provider, model, prompt_revision, enrichment_state, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
          ON CONFLICT (asset_id) DO UPDATE SET
-           ai_caption = excluded.ai_caption, ai_tags = excluded.ai_tags, provider = excluded.provider, model = excluded.model,
+           ai_caption = excluded.ai_caption, ai_tags = excluded.ai_tags, ai_objects = excluded.ai_objects, ai_text = excluded.ai_text,
+           ai_kind = excluded.ai_kind, provider = excluded.provider, model = excluded.model,
            prompt_revision = excluded.prompt_revision, enrichment_state = 'pending', updated_at = excluded.updated_at`,
-      ).run(task.assetId, r.caption, JSON.stringify(r.tags), r.provider, r.model, PROMPT_REVISION, nowIso());
+      ).run(task.assetId, r.caption, JSON.stringify(r.tags), JSON.stringify(r.objects), r.text, r.kind, r.provider, r.model, PROMPT_REVISION, nowIso());
       refreshPhotoText(db, task.assetId);
       this.tasks.enqueue(task.assetId, ['enrichment'], task.revision);
     })();
-    this.tasks.kick();
+    this.tasks.enqueueNextRevision(task.assetId, 'text_embedding');
   }
 }

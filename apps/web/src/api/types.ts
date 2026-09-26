@@ -34,6 +34,9 @@ export interface PhotoDetail extends PhotoSummary {
     provider: string | null;
     model: string | null;
     enrichment: { categories: string[]; keywords: string[]; rowId: number; storedAt: string } | null;
+    objects: string[];
+    text: string | null;
+    kind: string | null;
   } | null;
   albums: AlbumRef[];
   processing: Partial<Record<TaskKind, { state: 'pending' | 'running' | 'succeeded' | 'failed'; error: string | null; provider: string | null }>>;
@@ -72,7 +75,7 @@ export interface ImportJob {
   updatedAt: string;
 }
 
-export type TaskKind = 'caption' | 'embedding' | 'enrichment';
+export type TaskKind = 'caption' | 'embedding' | 'enrichment' | 'text_embedding';
 
 export interface KindSummary {
   kind: TaskKind;

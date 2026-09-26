@@ -20,6 +20,7 @@ export function registerSearchRoutes(app: FastifyInstance, { search }: Services)
             takenFrom: date,
             takenTo: date,
             camera: { type: 'string', maxLength: 200 },
+            kind: { type: 'string', enum: ['photo', 'screenshot', 'document', 'illustration', 'other'] },
             offset: { type: 'integer', minimum: 0, default: 0 },
             limit: { type: 'integer', minimum: 1, maximum: 200, default: 60 },
           },

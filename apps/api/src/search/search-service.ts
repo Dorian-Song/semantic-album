@@ -3,7 +3,7 @@ import type { Embedder } from '../inference/embedder.js';
 import type { AlbumRef, PhotoSummary } from '../photos/photo-queries.js';
 import { ServiceUnavailableError } from '../processing/task-service.js';
 import type { SearchMode, SettingsService } from '../settings/settings-service.js';
-import { LexicalSearch } from './lexical-search.js';
+import { LexicalSearch, queryTerms } from './lexical-search.js';
 import type { VectorIndex } from './vector-index.js';
 
 export interface SearchRequest {
@@ -15,6 +15,8 @@ export interface SearchRequest {
   takenFrom?: string | undefined;
   takenTo?: string | undefined;
   camera?: string | undefined;
+  /** Image kind from the AI description: photo, screenshot, document, illustration, other. */
+  kind?: string | undefined;
   offset?: number | undefined;
   limit?: number | undefined;
 }
@@ -63,6 +65,7 @@ export class SearchService {
     private readonly settings: SettingsService,
     private readonly vectors: VectorIndex,
     private readonly embedder: Embedder,
+    private readonly textVectors: VectorIndex | null = null,
   ) {
     this.lexical = new LexicalSearch(db);
   }
@@ -90,7 +93,7 @@ export class SearchService {
               const q = await this.queryVector(req.query);
               timings.embedQuery = performance.now() - t;
               t = performance.now();
-              meaningIds = this.vectors.search(q, eligible ? new Set(eligible) : null, CANDIDATES).map((h) => h.assetId);
+              meaningIds = this.meaningRanking(q, eligible ? new Set(eligible) : null);
               if (!eligible) meaningIds = this.onlyVisible(meaningIds);
               timings.vectorScan = performance.now() - t;
               m.status = 'ok';
@@ -112,7 +115,7 @@ export class SearchService {
     const fallbackToWords = mode !== 'words' && m.status === 'unavailable';
     if (mode === 'words' || fallbackToWords) ranked = wordIds;
     else if (mode === 'meaning') ranked = meaningIds;
-    else ranked = fuse([wordIds, meaningIds]);
+    else ranked = fuse([wordIds, meaningIds], [wordsWeight(req.query), 1]);
 
     t = performance.now();
     const pageIds = ranked.slice(offset, offset + limit);
@@ -141,6 +144,27 @@ export class SearchService {
     };
   }
 
+  /**
+   * Blends image and description-text similarity evenly (measured best on COCO; see text-embedding-worker.ts).
+   * Photos without a text vector yet (no description) use their image score shifted by the mean text-minus-image
+   * difference, so they are neither favoured nor buried while descriptions are still being written.
+   */
+  private meaningRanking(q: Float32Array, eligible: ReadonlySet<string> | null): string[] {
+    const image = this.vectors.scoreAll(q, eligible);
+    const text = this.textVectors?.scoreAll(q, eligible) ?? new Map<string, number>();
+    let diff = 0;
+    let n = 0;
+    for (const [id, t] of text) {
+      const i = image.get(id);
+      if (i !== undefined) (diff += t - i), n++;
+    }
+    const shift = n ? diff / n : 0;
+    const blended: [string, number][] = [];
+    for (const [id, i] of image) blended.push([id, 0.5 * i + 0.5 * (text.get(id) ?? i + shift)]);
+    blended.sort((a, b) => b[1] - a[1]);
+    return blended.slice(0, CANDIDATES).map(([id]) => id);
+  }
+
   private async queryVector(text: string): Promise<Float32Array> {
     const key = text.trim().toLowerCase();
     const cached = this.queryCache.get(key);
@@ -156,7 +180,8 @@ export class SearchService {
     const albums = req.albumIds?.length ? req.albumIds : null;
     const hasDate = !!(req.takenFrom || req.takenTo);
     const hasCamera = !!req.camera;
-    if (!albums && !hasDate && !hasCamera) return { eligible: null, excluded: 0 };
+    const hasKind = !!req.kind;
+    if (!albums && !hasDate && !hasCamera && !hasKind) return { eligible: null, excluded: 0 };
 
     const scope = `FROM assets a WHERE a.orphaned_at IS NULL AND EXISTS (SELECT 1 FROM album_assets aa WHERE aa.asset_id = a.id
                    ${albums ? 'AND aa.album_id IN (SELECT value FROM json_each(@albums))' : ''})`;
@@ -164,11 +189,13 @@ export class SearchService {
     if (req.takenFrom) conditions.push('a.taken_at >= @from');
     if (req.takenTo) conditions.push('a.taken_at < @to');
     if (hasCamera) conditions.push('a.camera_model = @camera');
+    if (hasKind) conditions.push('EXISTS (SELECT 1 FROM descriptions d WHERE d.asset_id = a.id AND d.ai_kind = @kind)');
     const params = {
       albums: JSON.stringify(albums ?? []),
       from: req.takenFrom ?? '',
       to: req.takenTo ? nextDay(req.takenTo) : '',
       camera: req.camera ?? '',
+      kind: req.kind ?? '',
     };
     const eligible = this.db.prepare(`SELECT a.id ${scope} ${conditions.map((c) => `AND ${c}`).join(' ')}`).pluck().all(params) as string[];
     const missing = [hasDate ? 'a.taken_at IS NULL' : null, hasCamera ? 'a.camera_model IS NULL' : null].filter(Boolean).join(' OR ');
@@ -215,7 +242,11 @@ export class SearchService {
     return ids.map((id) => byId.get(id)).filter((x): x is Omit<SearchResultItem, 'matchedBy'> => x !== undefined);
   }
 
-  facets(): { cameras: { model: string; count: number }[]; taken: { earliest: string | null; latest: string | null; withDate: number; withoutDate: number } } {
+  facets(): {
+    cameras: { model: string; count: number }[];
+    taken: { earliest: string | null; latest: string | null; withDate: number; withoutDate: number };
+    kinds: { kind: string; count: number }[];
+  } {
     const visible = `FROM assets a WHERE a.orphaned_at IS NULL AND EXISTS (SELECT 1 FROM album_assets WHERE asset_id = a.id)`;
     const cameras = this.db
       .prepare(`SELECT a.camera_model AS model, count(*) AS count ${visible} AND a.camera_model IS NOT NULL GROUP BY a.camera_model ORDER BY count DESC`)
@@ -223,13 +254,26 @@ export class SearchService {
     const t = this.db
       .prepare(`SELECT min(a.taken_at) AS earliest, max(a.taken_at) AS latest, count(a.taken_at) AS withDate, count(*) - count(a.taken_at) AS withoutDate ${visible}`)
       .get() as { earliest: string | null; latest: string | null; withDate: number; withoutDate: number };
-    return { cameras, taken: { ...t, earliest: t.earliest?.slice(0, 10) ?? null, latest: t.latest?.slice(0, 10) ?? null } };
+    const kinds = this.db
+      .prepare(`SELECT d.ai_kind AS kind, count(*) AS count ${visible.replace('FROM assets a', 'FROM assets a JOIN descriptions d ON d.asset_id = a.id')} AND d.ai_kind IS NOT NULL GROUP BY d.ai_kind ORDER BY count DESC`)
+      .all() as { kind: string; count: number }[];
+    return { cameras, taken: { ...t, earliest: t.earliest?.slice(0, 10) ?? null, latest: t.latest?.slice(0, 10) ?? null }, kinds };
   }
 }
 
-/** Reciprocal-rank fusion: score = Σ 1 / (k + rank). Each photo appears once. */
-export function fuse(lists: string[][], k = RRF_K): string[] {
+/**
+ * How much Words counts in Both. Keyword matching is precise for a few words ("banana", "stop sign") but
+ * weak for sentence-like queries, where it rewards common words; Meaning handles those better.
+ */
+export function wordsWeight(query: string): number {
+  const n = queryTerms(query).length;
+  return n <= 2 ? WORDS_WEIGHT.short : n <= 4 ? WORDS_WEIGHT.medium : WORDS_WEIGHT.long;
+}
+const WORDS_WEIGHT = { short: 1, medium: 0.5, long: 0.25 };
+
+/** Weighted reciprocal-rank fusion: score = Σ w / (k + rank). Each photo appears once. */
+export function fuse(lists: string[][], weights: number[] = [], k = RRF_K): string[] {
   const score = new Map<string, number>();
-  for (const list of lists) list.forEach((id, i) => score.set(id, (score.get(id) ?? 0) + 1 / (k + i + 1)));
+  lists.forEach((list, l) => list.forEach((id, i) => score.set(id, (score.get(id) ?? 0) + (weights[l] ?? 1) / (k + i + 1))));
   return [...score.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
 }

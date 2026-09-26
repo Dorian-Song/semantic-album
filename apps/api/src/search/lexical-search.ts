@@ -42,39 +42,48 @@ export function editDistance(a: string, b: string, max: number): number {
   return prev[b.length]!;
 }
 
+const quote = (t: string) => `"${t.replace(/"/g, '')}"`;
+
 function isSubsequence(needle: string, hay: string): boolean {
   let i = 0;
   for (const ch of hay) if (ch === needle[i]) i++;
   return i === needle.length;
 }
 
-/** FTS5 column weights: asset_id (unindexed), caption, tags (incl. n8n categories), filenames. */
-const BM25 = 'bm25(photo_fts, 0.0, 1.0, 2.0, 0.5)';
+/**
+ * FTS5 column weights: asset_id (unindexed), caption 1.0, tags with the main objects and n8n categories 2.0,
+ * the remaining objects 0.5, text in the image 1.0, filenames 0.5. Long object lists add noise to
+ * sentence-like queries, so only the most prominent objects weigh like tags; see docs/decision-log.md.
+ */
+const BM25 = 'bm25(photo_fts, 0.0, 1.0, 2.0, 0.5, 1.0, 0.5)';
 
 /**
- * Words search: FTS5 prefix match on any query term, ranked by bm25, so photos matching more (and rarer)
- * terms come first. A term that matches nothing is replaced by the closest indexed word within a small edit
- * distance. This is search assistance, not web-search ranking.
+ * Words search: any query term, Porter-stemmed by the index (so "skateboarding" finds "skateboard" while "car"
+ * does not find "carrot"), ranked by bm25 so photos matching more (and rarer) terms come first. A term with
+ * no match falls back to a prefix match, then to the closest indexed word within a small edit distance.
+ * This is search assistance, not web-search ranking.
  */
 export class LexicalSearch {
   constructor(private readonly db: Db) {}
 
   search(query: string, eligible: readonly string[] | null, limit: number): LexicalResult {
-    let terms = queryTerms(query);
+    const terms = queryTerms(query);
     if (terms.length === 0) return { hits: [], corrections: [] };
     const corrections: { from: string; to: string }[] = [];
-    if (this.run(terms, eligible, 1).length === 0) {
-      terms = terms.map((t) => {
-        const fix = this.correct(t);
-        if (fix) corrections.push({ from: t, to: fix });
-        return fix ?? t;
-      });
-    }
-    return { hits: this.run(terms, eligible, limit), corrections };
+    const matches = this.db.prepare(`SELECT 1 FROM photo_fts WHERE photo_fts MATCH ? LIMIT 1`);
+    const groups = terms.map((t) => {
+      if (matches.get(quote(t))) return quote(t);
+      // Prefix fallback only for longer words: a short one ("car") would match unrelated words ("carrot").
+      if (t.length >= 4 && matches.get(`${quote(t)}*`)) return `${quote(t)}*`;
+      const fix = this.correct(t);
+      if (!fix) return quote(t);
+      corrections.push({ from: t, to: fix });
+      return quote(fix);
+    });
+    return { hits: this.run(groups.map((g) => `(${g})`).join(' OR '), eligible, limit), corrections };
   }
 
-  private run(terms: string[], eligible: readonly string[] | null, limit: number): LexicalHit[] {
-    const match = terms.map((t) => `"${t.replace(/"/g, '')}"*`).join(' OR ');
+  private run(match: string, eligible: readonly string[] | null, limit: number): LexicalHit[] {
     const scope = eligible ? 'AND asset_id IN (SELECT value FROM json_each(?))' : '';
     const params: unknown[] = eligible ? [match, JSON.stringify(eligible), limit] : [match, limit];
     return this.db
@@ -82,13 +91,12 @@ export class LexicalSearch {
       .all(...params) as LexicalHit[];
   }
 
-  /** Closest indexed word for a term that has no prefix match, if one is close enough. */
+  /** Closest indexed (unstemmed) word for a term that matches nothing, if one is close enough. */
   private correct(term: string): string | null {
     if (term.length < 4) return null;
-    if (this.db.prepare(`SELECT 1 FROM photo_fts_vocab WHERE term >= ? AND term < ? LIMIT 1`).get(term, `${term}￿`)) return null;
     const max = term.length >= 7 ? 2 : 1;
     const rows = this.db
-      .prepare(`SELECT term, doc FROM photo_fts_vocab WHERE length(term) BETWEEN ? AND ?`)
+      .prepare(`SELECT term, doc FROM photo_words_vocab WHERE length(term) BETWEEN ? AND ?`)
       .all(term.length - max, term.length + max) as { term: string; doc: number }[];
     // Closest first; on a tie prefer a word that contains the typed letters in order (a dropped letter is the
     // commonest typo, so "grden" means "garden" rather than "green"), then the more common word.

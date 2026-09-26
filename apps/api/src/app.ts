@@ -17,6 +17,7 @@ import { VllmEmbedder } from './inference/vllm-client.js';
 import type { Embedder } from './inference/embedder.js';
 import { CaptionWorker } from './processing/caption-worker.js';
 import { EmbeddingWorker } from './processing/embedding-worker.js';
+import { TextEmbeddingWorker } from './processing/text-embedding-worker.js';
 import { SearchService } from './search/search-service.js';
 import { VectorIndex } from './search/vector-index.js';
 import { TaskService, type TaskOptions } from './processing/task-service.js';
@@ -63,7 +64,7 @@ export async function createApp(
   const tasks = new TaskService(ctx, app.log, taskOptions);
   const settings = new SettingsService(db);
   tasks.register('caption', new CaptionWorker(ctx, settings, tasks, tasks.maxAttempts));
-  tasks.register('enrichment', new EnrichmentWorker(ctx, settings));
+  tasks.register('enrichment', new EnrichmentWorker(ctx, settings, tasks));
   const embedder =
     embedderOverride ??
     new VllmEmbedder({
@@ -77,6 +78,8 @@ export async function createApp(
   const vectors = new VectorIndex(db, embedder.dimension);
   const exports = new ExportService(ctx, app.log);
   tasks.register('embedding', new EmbeddingWorker(ctx, embedder, vectors, env.embeddingConcurrency));
+  const textVectors = new VectorIndex(db, embedder.dimension, 'photo_text_vectors');
+  tasks.register('text_embedding', new TextEmbeddingWorker(ctx, embedder, textVectors, env.embeddingConcurrency));
   const assets = new AssetService(ctx, albums, tasks);
   const services: Services = {
     ctx,
@@ -88,7 +91,7 @@ export async function createApp(
     tasks,
     settings,
     purge: new PurgeWorker(ctx, settings, app.log),
-    search: new SearchService(db, settings, vectors, embedder),
+    search: new SearchService(db, settings, vectors, embedder, textVectors),
     exports,
     gc: new GarbageCollector(ctx, app.log, [() => exports.removeExpired(), async () => pruneIdempotencyKeys(db)]),
   };

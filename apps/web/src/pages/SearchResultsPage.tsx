@@ -16,6 +16,14 @@ const MODES: { value: SearchMode; label: string; hint: string }[] = [
 
 const PAGE = 60;
 
+const KIND_NAMES: Record<string, string> = {
+  photo: 'Photos',
+  screenshot: 'Screenshots',
+  document: 'Documents',
+  illustration: 'Illustrations',
+  other: 'Other',
+};
+
 export function SearchResultsPage() {
   const [params, setParams] = useSearchParams();
   const settings = useQuery({ queryKey: ['settings'], queryFn: getSettings });
@@ -28,6 +36,7 @@ export function SearchResultsPage() {
   const takenFrom = params.get('from') ?? '';
   const takenTo = params.get('to') ?? '';
   const camera = params.get('camera') ?? '';
+  const kind = params.get('kind') ?? '';
 
   const request: SearchParams = {
     query: q,
@@ -36,6 +45,7 @@ export function SearchResultsPage() {
     ...(takenFrom ? { takenFrom } : {}),
     ...(takenTo ? { takenTo } : {}),
     ...(camera ? { camera } : {}),
+    ...(kind ? { kind } : {}),
   };
   const results = useInfiniteQuery({
     queryKey: ['search', request],
@@ -117,6 +127,19 @@ export function SearchResultsPage() {
               <input type="date" value={takenTo} min={f?.taken.earliest ?? undefined} max={f?.taken.latest ?? undefined} onChange={(e) => update('to', e.target.value)} />
             </label>
           </div>
+        )}
+        {(f?.kinds.length ?? 0) > 1 && (
+          <label className="filter-camera">
+            Type
+            <select value={kind} onChange={(e) => update('kind', e.target.value)}>
+              <option value="">Any</option>
+              {f?.kinds.map((k) => (
+                <option key={k.kind} value={k.kind}>
+                  {KIND_NAMES[k.kind] ?? k.kind} ({k.count})
+                </option>
+              ))}
+            </select>
+          </label>
         )}
         {hasCameras && (
           <label className="filter-camera">

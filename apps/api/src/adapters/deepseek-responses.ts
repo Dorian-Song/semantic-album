@@ -1,5 +1,5 @@
 import { assertCompleted, outputText, postResponses } from '../egress/responses-client.js';
-import { dataUrl, parseCaptionJson, SYSTEM_PROMPT, USER_PROMPT, type CaptionImage, type CaptionResult } from './vision-provider.js';
+import { COMPACT_NOTE, dataUrl, parseCaptionJson, SYSTEM_PROMPT, USER_PROMPT, type CaptionImage, type CaptionResult } from './vision-provider.js';
 
 export interface DeepSeekConfig {
   baseUrl: string;
@@ -12,7 +12,7 @@ export interface DeepSeekConfig {
  * `input_image` data URLs (JPEG/PNG/GIF/WebP); DeepSeek resizes them itself. JSON mode is `json_object`,
  * and thinking is disabled because a caption does not need it.
  */
-export async function captionWithDeepSeek(cfg: DeepSeekConfig, image: CaptionImage): Promise<CaptionResult> {
+export async function captionWithDeepSeek(cfg: DeepSeekConfig, image: CaptionImage, compact = false): Promise<CaptionResult> {
   const body = {
     model: cfg.model,
     instructions: SYSTEM_PROMPT,
@@ -20,14 +20,14 @@ export async function captionWithDeepSeek(cfg: DeepSeekConfig, image: CaptionIma
       {
         role: 'user',
         content: [
-          { type: 'input_text', text: USER_PROMPT },
+          { type: 'input_text', text: compact ? `${USER_PROMPT} ${COMPACT_NOTE}` : USER_PROMPT },
           { type: 'input_image', image_url: dataUrl(image) },
         ],
       },
     ],
     text: { format: { type: 'json_object' } },
     reasoning: { effort: 'none' },
-    max_output_tokens: 600,
+    max_output_tokens: 1500,
     temperature: 0.2,
   };
   const json = await postResponses('DeepSeek', `${cfg.baseUrl}/responses`, cfg.apiKey, body);

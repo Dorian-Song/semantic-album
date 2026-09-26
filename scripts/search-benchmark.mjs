@@ -77,12 +77,45 @@ for (const mode of ['words', 'meaning', 'both']) {
   };
 }
 
-console.log('\nmode      R@1    R@5    R@10   MRR@10  p50 ms  p95 ms');
+// Object queries: the COCO category name ("banana", "stop sign") against the photos whose instance
+// annotations contain it. Measures precision of the first page, where a wrong fruit bowl at rank 3 hurts.
+const instances = JSON.parse(fs.readFileSync(new URL('../datasets/coco/annotations/instances_val2017.json', import.meta.url), 'utf8'));
+const withCategory = new Map(instances.categories.map((c) => [c.id, { name: c.name, files: new Set() }]));
+for (const a of instances.annotations) {
+  const file = fileOf.get(a.image_id);
+  if (idOf.has(file)) withCategory.get(a.category_id).files.add(idOf.get(file));
+}
+const objectQueries = [...withCategory.values()].filter((c) => c.files.size >= 10);
+for (const mode of ['words', 'meaning', 'both']) {
+  let p10 = 0;
+  let ndcg = 0;
+  const worst = [];
+  for (const c of objectQueries) {
+    const r = await (
+      await fetch(`${API}/api/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: c.name, mode, limit: 10 }) })
+    ).json();
+    const rel = r.items.map((i) => (c.files.has(i.id) ? 1 : 0));
+    const p = rel.reduce((a, b) => a + b, 0) / 10;
+    const dcg = rel.reduce((s, x, i) => s + x / Math.log2(i + 2), 0);
+    const ideal = Array.from({ length: Math.min(10, c.files.size) }, (_, i) => 1 / Math.log2(i + 2)).reduce((a, b) => a + b, 0);
+    p10 += p;
+    ndcg += dcg / ideal;
+    worst.push([p, c.name]);
+  }
+  results[mode].objectPrecisionAt10 = (100 * p10) / objectQueries.length;
+  results[mode].objectNdcgAt10 = ndcg / objectQueries.length;
+  results[mode].worstObjects = worst.sort((a, b) => a[0] - b[0]).slice(0, 8).map(([p, n]) => `${n} ${Math.round(p * 100)}%`);
+}
+
+console.log(`\ncaption queries (${sample.length}): the described photo's rank; object queries (${objectQueries.length} COCO categories): precision of the top 10`);
+console.log('\nmode      R@1    R@5    R@10   MRR@10  p50 ms  p95 ms   obj P@10  obj nDCG@10');
 for (const [mode, r] of Object.entries(results)) {
   console.log(
     `${mode.padEnd(8)} ${r.recallAt1.toFixed(1).padStart(5)}  ${r.recallAt5.toFixed(1).padStart(5)}  ${r.recallAt10.toFixed(1).padStart(5)}  ` +
       `${r.mrrAt10.toFixed(3).padStart(6)}  ${r.latencyMs.p50.toFixed(0).padStart(6)}  ${r.latencyMs.p95.toFixed(0).padStart(6)}` +
+      `   ${r.objectPrecisionAt10.toFixed(1).padStart(6)}   ${r.objectNdcgAt10.toFixed(3).padStart(8)}` +
       (r.fellBackToWords ? `  (${r.fellBackToWords} fell back to Words)` : ''),
   );
 }
+for (const [mode, r] of Object.entries(results)) console.log(`weakest object queries (${mode}): ${r.worstObjects.join(', ')}`);
 if (OUT) fs.writeFileSync(OUT, JSON.stringify({ date: new Date().toISOString(), library: idOf.size, queries: sample.length, results }, null, 2));

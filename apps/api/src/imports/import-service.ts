@@ -273,6 +273,7 @@ export class ImportService {
       .all(jobId) as { kind: TaskKind; state: string; n: number }[];
     const out = Object.fromEntries(TASK_KINDS.map((k) => [k, { total: 0, done: 0, failed: 0 }])) as ImportProgress['processing'];
     for (const r of rows) {
+      if (!out[r.kind]) continue; // a kind this build does not know
       out[r.kind].total += r.n;
       if (r.state === 'succeeded') out[r.kind].done += r.n;
       if (r.state === 'failed') out[r.kind].failed += r.n;

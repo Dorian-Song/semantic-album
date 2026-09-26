@@ -72,7 +72,7 @@ describe('search', () => {
   });
 
   test('Words: prefix match, one result per photo with every album name', async () => {
-    const r = await search({ query: 'lak', mode: 'words' });
+    const r = await search({ query: 'clea', mode: 'words' }); // prefix of "clear" (4+ letters)
     assert.deepEqual(r.items.map((i) => i.id), [ids.lake]);
     assert.deepEqual(r.items[0]!.albums.map((a) => a.name), ['Garden', 'Holiday']);
     assert.deepEqual(r.items[0]!.matchedBy, ['words']);

@@ -10,6 +10,7 @@ export interface SearchParams {
   takenFrom?: string;
   takenTo?: string;
   camera?: string;
+  kind?: string;
   offset?: number;
   limit?: number;
 }
@@ -37,6 +38,7 @@ export interface SearchResponse {
 export interface Facets {
   cameras: { model: string; count: number }[];
   taken: { earliest: string | null; latest: string | null; withDate: number; withoutDate: number };
+  kinds: { kind: string; count: number }[];
 }
 
 export const searchPhotos = (p: SearchParams) => api<SearchResponse>('/api/search', { method: 'POST', body: p });

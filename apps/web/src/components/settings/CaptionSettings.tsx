@@ -1,5 +1,6 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { getOutdatedDescriptions, refreshOutdatedDescriptions } from '../../api/processing';
 import { testCaption, updateSettings, type Settings, type SettingsUpdate, type TestResult } from '../../api/settings';
 import { FormError } from '../common/states';
 import { SecretField } from './SecretField';
@@ -24,6 +25,25 @@ function TestButton({ provider, disabled }: { provider: 'deepseek' | 'openai'; d
         </p>
       )}
       <p className="muted small">Sends one small generated picture, not your photos.</p>
+    </div>
+  );
+}
+
+/** Offers to re-describe photos whose AI description came from an older prompt. */
+function OutdatedDescriptions({ enabled }: { enabled: boolean }) {
+  const qc = useQueryClient();
+  const outdated = useQuery({ queryKey: ['processing', 'outdated'], queryFn: getOutdatedDescriptions, refetchInterval: 10_000 });
+  const refresh = useMutation({ mutationFn: refreshOutdatedDescriptions, onSuccess: () => void qc.invalidateQueries({ queryKey: ['processing'] }) });
+  if (!enabled || !outdated.data) return null;
+  return (
+    <div className="notice">
+      <p>
+        {outdated.data} photo{outdated.data === 1 ? ' has' : 's have'} no description or one from an older version of the description prompt. Updating sends
+        {outdated.data === 1 ? ' it' : ' them'} to DeepSeek again; your own descriptions are kept.
+      </p>
+      <button type="button" className="btn btn-small" disabled={refresh.isPending} onClick={() => refresh.mutate()}>
+        {refresh.isSuccess ? `Queued ${refresh.data.queued}` : 'Update descriptions'}
+      </button>
     </div>
   );
 }
@@ -95,6 +115,7 @@ export function CaptionSettings({ settings }: { settings: Settings }) {
         Generate descriptions for my photos
       </label>
       {draft.captionsEnabled && !dsKeyReady && <p className="form-hint">Add a DeepSeek API key below to start.</p>}
+      <OutdatedDescriptions enabled={settings.captionsEnabled && settings.deepseek.apiKey.saved} />
 
       <fieldset className="settings-group">
         <legend>DeepSeek (primary)</legend>

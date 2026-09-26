@@ -37,6 +37,9 @@ interface ExportPhoto {
   manual: string | null;
   tags: string | null;
   enrichment: string | null;
+  objects: string | null;
+  text: string | null;
+  kind: string | null;
   /** Filename in the first selected album that contains the photo, else its first imported name. */
   filename: string;
 }
@@ -149,6 +152,7 @@ export class ExportService {
       `SELECT a.id, a.sha256, a.format, a.object_key AS objectKey, a.width, a.height, a.taken_at AS takenAt,
               a.camera_make AS cameraMake, a.camera_model AS cameraModel, a.gps_lat AS gpsLat, a.gps_lon AS gpsLon,
               d.ai_caption AS ai, d.manual_caption AS manual, d.ai_tags AS tags, d.enrichment,
+              d.ai_objects AS objects, d.ai_text AS text, d.ai_kind AS kind,
               (SELECT display_filename FROM album_assets WHERE asset_id = a.id
                 ORDER BY album_id IN (SELECT value FROM json_each(?)) DESC, added_at LIMIT 1) AS filename
          FROM assets a LEFT JOIN descriptions d ON d.asset_id = a.id WHERE a.id = ?`,
@@ -186,6 +190,9 @@ export class ExportService {
         descriptionSource: p.manual ? 'user' : p.ai ? 'ai' : null,
         aiDescription: p.ai,
         tags,
+        objects: p.objects ? (JSON.parse(p.objects) as string[]) : [],
+        textInImage: p.text,
+        kind: p.kind,
         categories,
         albums: albumStmt.pluck().all(assetId) as string[],
       });
@@ -194,10 +201,10 @@ export class ExportService {
     }
 
     zip.addBuffer(Buffer.from(JSON.stringify({ exportedAt: nowIso(), photos: records }, null, 2)), `${ROOT}/metadata.json`);
-    const header = ['file', 'description', 'tags', 'categories', 'albums', 'takenAt', 'camera', 'latitude', 'longitude', 'sha256'];
+    const header = ['file', 'description', 'tags', 'objects', 'categories', 'kind', 'albums', 'takenAt', 'camera', 'latitude', 'longitude', 'sha256', 'textInImage'];
     const rows = records.map((r) => {
       const loc = r.location as { lat: number; lon: number } | null;
-      return [r.file, r.description, (r.tags as string[]).join('; '), (r.categories as string[]).join('; '), (r.albums as string[]).join('; '), r.takenAt, r.camera, loc?.lat, loc?.lon, r.sha256]
+      return [r.file, r.description, (r.tags as string[]).join('; '), (r.objects as string[]).join('; '), (r.categories as string[]).join('; '), r.kind, (r.albums as string[]).join('; '), r.takenAt, r.camera, loc?.lat, loc?.lon, r.sha256, r.textInImage]
         .map(csvCell)
         .join(',');
     });

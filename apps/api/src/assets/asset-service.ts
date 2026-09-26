@@ -101,5 +101,6 @@ export class AssetService {
       ).run(assetId, value, nowIso());
       refreshPhotoText(db, assetId);
     })();
+    this.tasks.enqueueNextRevision(assetId, 'text_embedding');
   }
 }

@@ -1,7 +1,7 @@
 import type { FastifyBaseLogger } from 'fastify';
 import type { AppContext } from '../context.js';
 import { postEnrichment, postPurge } from '../egress/n8n-client.js';
-import { ServiceUnavailableError, type ClaimedTask, type TaskHandler } from '../processing/task-service.js';
+import { ServiceUnavailableError, type ClaimedTask, type TaskHandler, type TaskService } from '../processing/task-service.js';
 import { refreshPhotoText } from '../search/fts-index.js';
 import type { SettingsService } from '../settings/settings-service.js';
 import { nowIso } from '../shared/ids.js';
@@ -15,6 +15,7 @@ export class EnrichmentWorker implements TaskHandler {
   constructor(
     private readonly ctx: AppContext,
     private readonly settings: SettingsService,
+    private readonly tasks: TaskService,
   ) {}
 
   concurrency(): number {
@@ -61,6 +62,7 @@ export class EnrichmentWorker implements TaskHandler {
       );
       refreshPhotoText(db, task.assetId);
     })();
+    this.tasks.enqueueNextRevision(task.assetId, 'text_embedding');
     return { provider: 'n8n' };
   }
 }
