@@ -22,6 +22,8 @@ export class GarbageCollector {
   constructor(
     private readonly ctx: AppContext,
     private readonly log: FastifyBaseLogger,
+    /** Other periodic clean-ups (expired export files) run on the same timer. */
+    private readonly extraCleanup: (() => Promise<unknown>)[] = [],
   ) {}
 
   start(intervalMs = 10 * 60_000): void {
@@ -68,6 +70,7 @@ export class GarbageCollector {
       });
     }
     if (deleted) this.log.info({ deleted }, 'removed unreferenced photos');
+    for (const cleanup of this.extraCleanup) await cleanup();
     return deleted;
   }
 }

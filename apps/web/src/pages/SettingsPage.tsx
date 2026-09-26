@@ -6,6 +6,7 @@ import type { KindSummary } from '../api/types';
 import { ErrorState, Loading } from '../components/common/states';
 import { CaptionSettings } from '../components/settings/CaptionSettings';
 import { N8nSettings } from '../components/settings/N8nSettings';
+import { PrivacySummary, SearchSettings } from '../components/settings/SearchSettings';
 
 function KindRow({ k }: { k: KindSummary }) {
   const qc = useQueryClient();
@@ -57,7 +58,9 @@ export function SettingsPage() {
       {settings.isPending && <Loading />}
       {settings.isError && <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />}
       {settings.data && <CaptionSettings settings={settings.data} />}
+      {settings.data && <SearchSettings settings={settings.data} />}
       {settings.data && <N8nSettings settings={settings.data} />}
+      {settings.data && <PrivacySummary settings={settings.data} />}
       <section className="card" aria-labelledby="status-heading">
         <h2 id="status-heading">Services</h2>
         {health.isPending && <Loading label="Checking services…" />}
@@ -72,7 +75,6 @@ export function SettingsPage() {
             ))}
           </dl>
         )}
-        <p className="muted small">Search settings are added with the search feature.</p>
       </section>
 
       <section className="card" aria-labelledby="processing-heading">

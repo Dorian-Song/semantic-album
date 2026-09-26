@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export function useSelection() {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
@@ -13,6 +13,13 @@ export function useSelection() {
     [],
   );
   const clear = useCallback(() => setSelected(new Set()), []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.querySelector('dialog[open], details[open]')) clear();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [clear]);
   const setAll = useCallback((ids: string[]) => setSelected(new Set(ids)), []);
   return { selected, toggle, clear, setAll };
 }

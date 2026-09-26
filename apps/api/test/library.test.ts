@@ -266,3 +266,23 @@ describe('formats and metadata', () => {
     assert.deepEqual([ctx.index, ctx.total, ctx.prevId, ctx.nextId], [1, 3, ids[0], ids[2]]);
   });
 });
+
+describe('idempotency keys', () => {
+  test('a repeated request returns the first response; a reused key for another request is rejected', async () => {
+    const t = await testApp();
+    try {
+      const send = (name: string, key: string) =>
+        t.app.inject({ method: 'POST', url: '/api/albums', payload: { name }, headers: { 'idempotency-key': key } });
+      const first = await send('Retry me', 'key-0000000001');
+      const again = await send('Retry me', 'key-0000000001');
+      assert.equal(first.statusCode, 201);
+      assert.equal(again.statusCode, 201);
+      assert.equal(again.headers['idempotent-replayed'], 'true');
+      assert.equal(JSON.parse(again.body).id, JSON.parse(first.body).id);
+      assert.equal(t.services.ctx.db.prepare(`SELECT count(*) FROM albums`).pluck().get(), 1);
+      assert.equal((await send('Something else', 'key-0000000001')).statusCode, 409);
+    } finally {
+      await t.close();
+    }
+  });
+});

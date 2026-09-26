@@ -4,6 +4,8 @@ import type { Services } from '../app.js';
 import { AppError } from '../shared/errors.js';
 import { registerAlbumRoutes } from './albums.routes.js';
 import { checkHealth } from './health.js';
+import { registerIdempotency } from './idempotency.js';
+import { registerExportRoutes } from './exports.routes.js';
 import { registerImportRoutes } from './imports.routes.js';
 import { registerPhotoRoutes } from './photos.routes.js';
 import { registerProcessingRoutes } from './processing.routes.js';
@@ -21,6 +23,7 @@ export async function registerRoutes(app: FastifyInstance, services: Services): 
   const { ctx } = services;
 
   await app.register(multipart, { limits: { files: 1, fields: 0, fileSize: ctx.env.maxImportBytes + 1 } });
+  registerIdempotency(app, ctx.db);
 
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof AppError) return reply.code(err.status).send({ error: { code: err.code, message: err.message } });
@@ -42,4 +45,5 @@ export async function registerRoutes(app: FastifyInstance, services: Services): 
   registerProcessingRoutes(app, services);
   registerSettingsRoutes(app, services);
   registerSearchRoutes(app, services);
+  registerExportRoutes(app, services);
 }

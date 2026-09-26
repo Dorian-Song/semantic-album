@@ -562,7 +562,7 @@ a {
 /* ---------- detail ---------- */
 .detail {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
   gap: 28px;
   align-items: start;
 }
@@ -745,35 +745,10 @@ a {
 /* ---------- responsive ---------- */
 @media (max-width: 1100px) {
   .detail {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
-@media (max-width: 760px) {
-  .shell {
-    grid-template-columns: 1fr;
-  }
-  .sidebar {
-    position: static;
-    height: auto;
-    padding: 12px 16px;
-  }
-  .sidebar ul {
-    display: flex;
-    gap: 4px;
-    overflow-x: auto;
-  }
-  .brand {
-    margin-bottom: 8px;
-  }
-  .topbar,
-  .content {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-  .photo-grid {
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  }
-}
+
 
 /* ---------- processing ---------- */
 .job-processing {
@@ -1015,4 +990,95 @@ code {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ---------- step 7 ---------- */
+.dialog-list {
+  padding-left: 20px;
+  margin: 4px 0 10px;
+}
+.dialog-list li {
+  margin: 4px 0;
+}
+.dialog progress {
+  width: 100%;
+}
+.radio-list {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.radio-list legend {
+  font-weight: 550;
+  margin-bottom: 6px;
+}
+.radio-list label {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+.privacy-list {
+  padding-left: 20px;
+  margin: 8px 0 4px;
+}
+.privacy-list li {
+  margin: 6px 0;
+}
+.card + .card,
+.settings-form + .card,
+.card + .settings-form {
+  margin-top: 20px;
+}
+
+/* ---------- responsive (last, so it overrides the rules above) ---------- */
+@media (max-width: 760px) {
+  .shell {
+    /* minmax(0, …) so wide content scrolls inside its box instead of widening the page */
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .topbar {
+    flex-wrap: wrap;
+    padding-top: 12px;
+  }
+  .search-bar {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .topbar-actions .btn {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+  }
+  .page-head .button-row {
+    width: 100%;
+  }
+  .detail-side {
+    padding: 16px;
+  }
+  .viewer {
+    height: 55vh;
+  }
+  .sidebar {
+    position: static;
+    height: auto;
+    padding: 12px 16px;
+  }
+  .sidebar ul {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+  }
+  .brand {
+    margin-bottom: 8px;
+  }
+  .topbar,
+  .content {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .photo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  }
 }

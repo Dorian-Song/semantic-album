@@ -41,6 +41,26 @@ This is the build contract for an implementation model. Follow [backend design](
 | Export an album that shares a photo with another selected album | The ZIP contains each original once, XMP sidecars with caption and tags, and metadata listing both albums. |
 | A photo has no location metadata | No empty location field is shown. |
 
+## Status (2026-09-26)
+
+Build steps 1–8 are implemented. The streaming search endpoint is not built; add it only if `scripts/search-benchmark.mjs` shows `both` above 3 s at p95. Each acceptance scenario is covered as follows (tests in `apps/api/test/`):
+
+| Scenario | Covered by |
+| --- | --- |
+| Folder-name collisions; dedup across albums; source folder deleted | `library.test.ts` › folder import |
+| HEIC/AVIF display; disguised PNG; MP4 renamed `.heic` | `library.test.ts` › formats and metadata; folder import |
+| Search in album A lists A and B; filters exclude missing metadata | `search.test.ts` |
+| Move into an album that already has the photo; delete shared album | `library.test.ts` › browser uploads and memberships |
+| Last reference removed → hidden, cleaned after grace, n8n row purged | `library.test.ts` › last-reference cleanup; `enrichment.test.ts` |
+| Restart mid-import; interrupted browser batch | `processing.test.ts` › restart recovery; `library.test.ts` |
+| Manual description survives regeneration | `captions.test.ts` |
+| DeepSeek rejects a photo → OpenAI fallback | `captions.test.ts` |
+| n8n write/read, retry → one row, n8n unavailable | `enrichment.test.ts` (Code node script run for real); live checks against n8n 2.40.7 |
+| vLLM unavailable → explicit Words fallback | `search.test.ts` › search without the embedding model |
+| Export with a photo in two selected albums | `export.test.ts` |
+| Repeated request with the same Idempotency-Key | `library.test.ts` › idempotency keys |
+| 10,000-photo import and p95 latency | manual: import `datasets/coco/val2017` (+ more), then `scripts/search-benchmark.mjs` |
+
 ## Practical implementation notes
 
 - Verify library versions and inference behavior against current official documentation before pinning. In particular, test the exact Qwen/vLLM image request format on the 8 GB RTX 4060 Laptop GPU with conservative memory settings.

@@ -9,6 +9,8 @@ import { openDatabase } from './db/connection.js';
 import { migrate } from './db/migrate.js';
 import { ImportService } from './imports/import-service.js';
 import { createHttpServer, registerRoutes, type LoggerOption } from './ingress/http.js';
+import { pruneIdempotencyKeys } from './ingress/idempotency.js';
+import { ExportService } from './exports/export-service.js';
 import { PhotoQueries } from './photos/photo-queries.js';
 import { EnrichmentWorker, PurgeWorker } from './automation/enrichment-service.js';
 import { VllmEmbedder } from './inference/vllm-client.js';
@@ -35,6 +37,7 @@ export interface Services {
   settings: SettingsService;
   purge: PurgeWorker;
   search: SearchService;
+  exports: ExportService;
   gc: GarbageCollector;
 }
 
@@ -72,6 +75,7 @@ export async function createApp(
       dimension: 2048,
     });
   const vectors = new VectorIndex(db, embedder.dimension);
+  const exports = new ExportService(ctx, app.log);
   tasks.register('embedding', new EmbeddingWorker(ctx, embedder, vectors, env.embeddingConcurrency));
   const assets = new AssetService(ctx, albums, tasks);
   const services: Services = {
@@ -85,7 +89,8 @@ export async function createApp(
     settings,
     purge: new PurgeWorker(ctx, settings, app.log),
     search: new SearchService(db, settings, vectors, embedder),
-    gc: new GarbageCollector(ctx, app.log),
+    exports,
+    gc: new GarbageCollector(ctx, app.log, [() => exports.removeExpired(), async () => pruneIdempotencyKeys(db)]),
   };
   await registerRoutes(app, services);
   app.addHook('onClose', async () => {

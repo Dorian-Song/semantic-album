@@ -9,6 +9,7 @@ const { app, services } = await createApp(env, { level: process.env.LOG_LEVEL ??
 services.tasks.recover();
 await reconcileStorage(services.ctx, app.log);
 services.imports.recover();
+services.exports.recover();
 services.tasks.start();
 services.gc.start();
 services.purge.start();

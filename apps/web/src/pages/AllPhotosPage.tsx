@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { listPhotos } from '../api/photos';
 import { useShellDialogs } from '../app/shell-context';
 import { EmptyState, ErrorState, Loading } from '../components/common/states';
+import { ExportDialog } from '../components/dialogs/ExportDialog';
 import { AddToAlbumDialog, DeletePhotoDialog } from '../components/dialogs/PhotoDialogs';
 import { PhotoGrid } from '../components/photos/PhotoGrid';
 import { SelectionBar } from '../components/photos/SelectionBar';
@@ -12,7 +13,7 @@ export function AllPhotosPage() {
   const open = useShellDialogs();
   const pages = usePhotoPages(['photos', 'all'], (offset, limit) => listPhotos(offset, limit));
   const { selected, toggle, clear, setAll } = useSelection();
-  const [dialog, setDialog] = useState<'add' | 'delete' | null>(null);
+  const [dialog, setDialog] = useState<'add' | 'delete' | 'export' | null>(null);
   const ids = [...selected];
 
   return (
@@ -24,6 +25,9 @@ export function AllPhotosPage() {
       <SelectionBar count={selected.size} onClear={clear} onSelectAll={() => setAll(pages.photos.map((p) => p.id))}>
         <button type="button" className="btn btn-small" onClick={() => setDialog('add')}>
           Add to album
+        </button>
+        <button type="button" className="btn btn-small" onClick={() => setDialog('export')}>
+          Export
         </button>
         <button type="button" className="btn btn-small btn-danger" onClick={() => setDialog('delete')}>
           Delete from library
@@ -46,6 +50,7 @@ export function AllPhotosPage() {
       )}
       {dialog === 'add' && <AddToAlbumDialog photoIds={ids} onClose={() => setDialog(null)} />}
       {dialog === 'delete' && <DeletePhotoDialog photoIds={ids} onClose={() => setDialog(null)} onDone={clear} />}
+      {dialog === 'export' && <ExportDialog scope={{ assetIds: ids }} label={`${ids.length} photo${ids.length === 1 ? '' : 's'}`} onClose={() => setDialog(null)} />}
     </>
   );
 }

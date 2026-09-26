@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { getAlbum, listAlbumPhotos } from '../api/albums';
 import { EmptyState, ErrorState, Loading } from '../components/common/states';
 import { DeleteAlbumDialog, RenameAlbumDialog } from '../components/dialogs/AlbumDialogs';
+import { ExportDialog } from '../components/dialogs/ExportDialog';
 import { ImportPhotosDialog } from '../components/dialogs/ImportDialogs';
 import { AddToAlbumDialog, DeletePhotoDialog, MovePhotoDialog, RemoveFromAlbumDialog } from '../components/dialogs/PhotoDialogs';
 import { PhotoGrid } from '../components/photos/PhotoGrid';
@@ -11,7 +12,7 @@ import { SelectionBar } from '../components/photos/SelectionBar';
 import { usePhotoPages } from '../hooks/usePhotoPages';
 import { useSelection } from '../hooks/useSelection';
 
-type AlbumDialog = 'import' | 'rename' | 'delete' | 'add' | 'move' | 'remove' | 'delete-photos' | null;
+type AlbumDialog = 'import' | 'rename' | 'delete' | 'add' | 'move' | 'remove' | 'delete-photos' | 'export' | 'export-selection' | null;
 
 export function AlbumPage() {
   const { id = '' } = useParams();
@@ -54,6 +55,9 @@ export function AlbumPage() {
           <button type="button" className="btn" onClick={() => setDialog('rename')}>
             Rename
           </button>
+          <button type="button" className="btn" disabled={a.photoCount === 0} onClick={() => setDialog('export')}>
+            Export
+          </button>
           <button type="button" className="btn btn-danger" onClick={() => setDialog('delete')}>
             Delete album
           </button>
@@ -69,6 +73,9 @@ export function AlbumPage() {
         </button>
         <button type="button" className="btn btn-small" onClick={() => setDialog('remove')}>
           Remove from this album
+        </button>
+        <button type="button" className="btn btn-small" onClick={() => setDialog('export-selection')}>
+          Export
         </button>
         <button type="button" className="btn btn-small btn-danger" onClick={() => setDialog('delete-photos')}>
           Delete from library
@@ -99,6 +106,8 @@ export function AlbumPage() {
       {dialog === 'move' && <MovePhotoDialog photoIds={ids} from={ref} onClose={close} onMoved={clear} />}
       {dialog === 'remove' && <RemoveFromAlbumDialog photoIds={ids} album={ref} onClose={close} onDone={clear} />}
       {dialog === 'delete-photos' && <DeletePhotoDialog photoIds={ids} onClose={close} onDone={clear} />}
+      {dialog === 'export' && <ExportDialog scope={{ albumIds: [a.id] }} label={`“${a.name}”`} onClose={close} />}
+      {dialog === 'export-selection' && <ExportDialog scope={{ assetIds: ids }} label={`${ids.length} photo${ids.length === 1 ? '' : 's'}`} onClose={close} />}
     </>
   );
 }
