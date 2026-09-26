@@ -57,3 +57,8 @@ This log records where the design differs from the *Team Formation and Role Assi
 
 **Decision:** photos and queries use the same instruction, and the chat template includes the generation prompt.
 **Why:** on 300 COCO images, caption→image Recall@1 was 72% with this format, against 45% with vLLM's default template setting and at most 59% with custom query instructions. The first eight-image probe had suggested the opposite; the larger sample showed that was noise.
+
+## 2026-09-26 — 200 concurrent caption requests
+
+**Original plan:** start caption concurrency around 4 and not adopt a provider's advertised ceiling as the worker count.
+**Decision (project owner):** 200 requests in flight to DeepSeek, whose account allows 2,500; 4 was far too slow for a 5,000–10,000-photo import. Supporting changes: the setting allows up to 500, originals over 5 MB are sent as the 2560 px derivative to bound memory, and n8n enrichment runs 16 at a time so it keeps up. A 429 still pauses the whole caption queue instead of retrying each photo.

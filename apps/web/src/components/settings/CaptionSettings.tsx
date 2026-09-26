@@ -155,7 +155,7 @@ export function CaptionSettings({ settings }: { settings: Settings }) {
 
       <label className="field field-narrow">
         <span>Photos described at the same time</span>
-        <input type="number" min={1} max={16} value={draft.concurrency} onChange={(e) => set('concurrency', Math.min(16, Math.max(1, Number(e.target.value) || 1)))} />
+        <input type="number" min={1} max={500} value={draft.concurrency} onChange={(e) => set('concurrency', Math.min(500, Math.max(1, Number(e.target.value) || 1)))} />
       </label>
 
       <FormError error={save.error} />

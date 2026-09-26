@@ -32,8 +32,8 @@ const updateSchema = {
       properties: { webhookUrl: { type: ['string', 'null'], maxLength: 2000 }, secret },
     },
     defaultSearchMode: { type: 'string', enum: ['words', 'meaning', 'both'] },
-    captionConcurrency: { type: 'integer', minimum: 1, maximum: 16 },
-    enrichmentConcurrency: { type: 'integer', minimum: 1, maximum: 8 },
+    captionConcurrency: { type: 'integer', minimum: 1, maximum: 500 },
+    enrichmentConcurrency: { type: 'integer', minimum: 1, maximum: 64 },
   },
 } as const;
 

@@ -62,7 +62,7 @@ export function N8nSettings({ settings }: { settings: Settings }) {
       </p>
       <label className="field field-narrow">
         <span>Requests at the same time</span>
-        <input type="number" min={1} max={8} value={concurrency} onChange={(e) => (setSaved(false), setConcurrency(Math.min(8, Math.max(1, Number(e.target.value) || 1))))} />
+        <input type="number" min={1} max={64} value={concurrency} onChange={(e) => (setSaved(false), setConcurrency(Math.min(64, Math.max(1, Number(e.target.value) || 1))))} />
       </label>
       <div className="test-row">
         <button type="button" className="btn btn-small" disabled={!settings.n8n.webhookUrl || !settings.n8n.secret.saved || test.isPending} onClick={() => test.mutate()}>

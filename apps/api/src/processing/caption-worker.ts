@@ -10,8 +10,11 @@ import { PermanentTaskError, ServiceUnavailableError, type ClaimedTask, type Tas
 
 /** Formats both providers accept directly; anything else goes as the JPEG derivative. */
 const PROVIDER_FORMATS: Record<string, CaptionImage['mime']> = { jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
-/** Stay well below DeepSeek's 32 MiB per-image limit once base64-encoded. */
-const MAX_ORIGINAL_BYTES = 20 * 1024 * 1024;
+/**
+ * Larger originals go as the 2560 px JPEG derivative. This keeps well under DeepSeek's 32 MiB image limit and
+ * bounds memory: with hundreds of requests in flight, each holds its image and its base64 copy.
+ */
+const MAX_ORIGINAL_BYTES = 5 * 1024 * 1024;
 
 export class CaptionWorker implements TaskHandler {
   constructor(

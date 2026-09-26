@@ -146,9 +146,9 @@ The design target is to import 10,000 photos end to end with no manual intervent
 | --- | --- | --- |
 | Hash + sniff + derivative (CPU) | worker pool; external HEIC/AVIF decoders count toward it | `max(1, cores - 1)` |
 | SQLite commit | single writer, short transactions batched per few items | 1 |
-| Cloud caption | setting; back off on HTTP 429/5xx | 4, tuned by measurement |
+| Cloud caption | setting (1–500); a 429 pauses the queue | 4 for a new library; set to 200 for this project (see decision log) |
 | Local embedding | GPU capacity; send small batches of derivatives | 1 request in flight |
-| n8n enrichment | setting | 2 |
+| n8n enrichment | setting (1–64) | 2; 16 alongside 200 caption requests |
 
 Do not turn a provider's advertised concurrency ceiling into the app's worker count. Retries use exponential backoff through `next attempt time`; after the attempt limit a task stays `failed` and is visible in progress for manual retry. Record per-stage timings so the 10,000-photo run can be reported with real numbers.
 
