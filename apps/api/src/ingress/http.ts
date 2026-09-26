@@ -7,6 +7,7 @@ import { checkHealth } from './health.js';
 import { registerImportRoutes } from './imports.routes.js';
 import { registerPhotoRoutes } from './photos.routes.js';
 import { registerProcessingRoutes } from './processing.routes.js';
+import { registerSettingsRoutes } from './settings.routes.js';
 
 export type LoggerOption = NonNullable<FastifyServerOptions['logger']>;
 
@@ -38,4 +39,5 @@ export async function registerRoutes(app: FastifyInstance, services: Services): 
   registerPhotoRoutes(app, services);
   registerImportRoutes(app, services);
   registerProcessingRoutes(app, services);
+  registerSettingsRoutes(app, services);
 }

@@ -41,8 +41,10 @@ describe('processing tasks', () => {
       assert.deepEqual(job.processing.caption, { total: 3, done: 0, failed: 0 });
       assert.deepEqual(job.processing.embedding, { total: 3, done: 0, failed: 0 });
       assert.deepEqual(job.processing.enrichment, { total: 0, done: 0, failed: 0 });
-      assert.equal(kind(t, 'caption').registered, false);
-      assert.equal(kind(t, 'caption').pending, 3);
+      assert.equal(kind(t, 'embedding').registered, false);
+      assert.equal(kind(t, 'embedding').pending, 3);
+      assert.equal(kind(t, 'caption').pausedReason, 'AI descriptions are turned off in Settings');
+      assert.ok(t.services.ctx.db.prepare(`SELECT attempts FROM processing_tasks WHERE kind = 'caption'`).pluck().all().every((a) => a === 0));
       assert.ok(job.timings && job.timings.stage.count === 3 && job.timings.ingest.p95Ms >= 0);
     } finally {
       await t.close();
@@ -55,7 +57,7 @@ describe('processing tasks', () => {
       await importFolder(t, 'Pool', 8);
       let running = 0;
       let peak = 0;
-      t.services.tasks.register('caption', {
+      t.services.tasks.register('embedding', {
         concurrency: () => 2,
         run: async () => {
           peak = Math.max(peak, ++running);
@@ -66,8 +68,8 @@ describe('processing tasks', () => {
       });
       await t.services.tasks.idle();
       assert.equal(peak, 2);
-      assert.equal(kind(t, 'caption').succeeded, 8);
-      assert.equal(kind(t, 'embedding').pending, 8, 'embedding has no handler and is untouched');
+      assert.equal(kind(t, 'embedding').succeeded, 8);
+      assert.equal(kind(t, 'caption').succeeded, 0, 'caption is paused and unaffected by the embedding pool');
     } finally {
       await t.close();
     }

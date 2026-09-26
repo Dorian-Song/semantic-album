@@ -11,6 +11,7 @@ export const addToAlbum = (id: string, albumId: string) => api<{ added: boolean 
 export const movePhoto = (id: string, fromAlbumId: string, toAlbumId: string) =>
   api<{ albums: AlbumRef[] }>(`/api/photos/${id}/move`, { method: 'POST', body: { fromAlbumId, toAlbumId } });
 export const deletePhoto = (id: string) => api<void>(`/api/photos/${id}`, { method: 'DELETE' });
+export const regenerateCaption = (id: string) => api<{ revision: number }>(`/api/photos/${id}/caption`, { method: 'POST' });
 export const setManualCaption = (id: string, manualCaption: string | null) =>
   api<PhotoDetail>(`/api/photos/${id}/description`, { method: 'PATCH', body: { manualCaption } });
 

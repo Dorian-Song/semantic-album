@@ -20,7 +20,15 @@ export interface PhotoDetail extends PhotoSummary {
   byteSize: number;
   camera: { make: string | null; model: string | null } | null;
   location: { lat: number; lon: number } | null;
-  description: { effective: string | null; ai: string | null; manual: string | null; tags: string[] } | null;
+  description: {
+    effective: string | null;
+    ai: string | null;
+    manual: string | null;
+    tags: string[];
+    /** Who wrote the AI draft. */
+    provider: string | null;
+    model: string | null;
+  } | null;
   albums: AlbumRef[];
 }
 
@@ -92,7 +100,8 @@ export class PhotoQueries {
                 a.camera_make AS cameraMake, a.camera_model AS cameraModel, a.gps_lat AS gpsLat, a.gps_lon AS gpsLon,
                 (SELECT display_filename FROM album_assets WHERE asset_id = a.id
                   ORDER BY album_id = ? DESC, added_at LIMIT 1) AS filename,
-                d.asset_id AS hasDescription, d.ai_caption AS ai, d.manual_caption AS manual, d.ai_tags AS tags
+                d.asset_id AS hasDescription, d.ai_caption AS ai, d.manual_caption AS manual, d.ai_tags AS tags,
+                d.provider AS provider, d.model AS model
            FROM assets a LEFT JOIN descriptions d ON d.asset_id = a.id
           WHERE a.id = ? AND a.orphaned_at IS NULL`,
       )
@@ -117,7 +126,14 @@ export class PhotoQueries {
       camera: make || model ? { make, model } : null,
       location: lat !== null && lon !== null ? { lat, lon } : null,
       description: row.hasDescription
-        ? { effective: manual ?? ai, ai, manual, tags: JSON.parse((row.tags as string) ?? '[]') as string[] }
+        ? {
+            effective: manual ?? ai,
+            ai,
+            manual,
+            tags: JSON.parse((row.tags as string) ?? '[]') as string[],
+            provider: row.provider as string | null,
+            model: row.model as string | null,
+          }
         : null,
       albums: this.albumsOf(assetId),
     };

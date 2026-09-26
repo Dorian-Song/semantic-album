@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchHealth, type Health, type ServiceState } from '../api/health';
 import { getProcessing, KIND_LABELS, retryFailed, waitingReason } from '../api/processing';
+import { getSettings } from '../api/settings';
 import type { KindSummary } from '../api/types';
 import { ErrorState, Loading } from '../components/common/states';
+import { CaptionSettings } from '../components/settings/CaptionSettings';
 
 function KindRow({ k }: { k: KindSummary }) {
   const qc = useQueryClient();
@@ -47,9 +49,13 @@ const STATE_TEXT: Record<ServiceState, string> = {
 export function SettingsPage() {
   const health = useQuery({ queryKey: ['health'], queryFn: fetchHealth, refetchInterval: 5000 });
   const processing = useQuery({ queryKey: ['processing'], queryFn: getProcessing, refetchInterval: 3000 });
+  const settings = useQuery({ queryKey: ['settings'], queryFn: getSettings });
   return (
     <>
       <h1>Settings</h1>
+      {settings.isPending && <Loading />}
+      {settings.isError && <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />}
+      {settings.data && <CaptionSettings settings={settings.data} />}
       <section className="card" aria-labelledby="status-heading">
         <h2 id="status-heading">Services</h2>
         {health.isPending && <Loading label="Checking services…" />}
@@ -64,7 +70,7 @@ export function SettingsPage() {
             ))}
           </dl>
         )}
-        <p className="muted small">Description model, search, and n8n settings are added with the AI features.</p>
+        <p className="muted small">Search and n8n settings are added with those features.</p>
       </section>
 
       <section className="card" aria-labelledby="processing-heading">

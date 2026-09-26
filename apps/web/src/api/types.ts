@@ -26,8 +26,16 @@ export interface PhotoDetail extends PhotoSummary {
   byteSize: number;
   camera: { make: string | null; model: string | null } | null;
   location: { lat: number; lon: number } | null;
-  description: { effective: string | null; ai: string | null; manual: string | null; tags: string[] } | null;
+  description: {
+    effective: string | null;
+    ai: string | null;
+    manual: string | null;
+    tags: string[];
+    provider: string | null;
+    model: string | null;
+  } | null;
   albums: AlbumRef[];
+  processing: Partial<Record<TaskKind, { state: 'pending' | 'running' | 'succeeded' | 'failed'; error: string | null; provider: string | null }>>;
 }
 
 export interface Page<T> {

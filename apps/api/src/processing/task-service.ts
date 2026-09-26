@@ -82,6 +82,7 @@ export class TaskService {
 
   register(kind: TaskKind, handler: TaskHandler): void {
     this.handlers.set(kind, handler);
+    this.paused.delete(kind); // a pause belonged to the previous handler's service
     this.kick();
   }
 
@@ -186,6 +187,46 @@ export class TaskService {
         ).run(message, new Date(now.getTime() + delay).toISOString(), now.toISOString(), task.id);
       }
     }
+  }
+
+  /** Lifts a pause early, e.g. after the user saves a new API key. */
+  resume(kind?: TaskKind): void {
+    if (kind) this.paused.delete(kind);
+    else this.paused.clear();
+    this.kick();
+  }
+
+  /** Queues the next revision of one kind for an asset (e.g. "regenerate description"). Returns the revision. */
+  enqueueNextRevision(assetId: string, kind: TaskKind): number {
+    const { db } = this.ctx;
+    const revision = db.transaction(() => {
+      const current = db.prepare(`SELECT max(revision) FROM processing_tasks WHERE asset_id = ? AND kind = ?`).pluck().get(assetId, kind) as number | null;
+      const pendingSame = db
+        .prepare(`SELECT revision FROM processing_tasks WHERE asset_id = ? AND kind = ? AND state IN ('pending', 'running') ORDER BY revision DESC LIMIT 1`)
+        .pluck()
+        .get(assetId, kind) as number | undefined;
+      if (pendingSame !== undefined) return pendingSame; // already queued; do not stack reruns
+      const next = (current ?? 0) + 1;
+      this.enqueue(assetId, [kind], next);
+      return next;
+    })();
+    this.kick();
+    return revision;
+  }
+
+  /** Latest-revision task state per kind for one asset. */
+  statusOf(assetId: string): Partial<Record<TaskKind, { state: string; error: string | null; provider: string | null }>> {
+    const rows = this.ctx.db
+      .prepare(
+        `SELECT kind, state, error, provider FROM processing_tasks t
+          WHERE asset_id = ? AND revision = (SELECT max(revision) FROM processing_tasks WHERE asset_id = t.asset_id AND kind = t.kind)`,
+      )
+      .all(assetId) as { kind: TaskKind; state: string; error: string | null; provider: string | null }[];
+    return Object.fromEntries(rows.map(({ kind, ...rest }) => [kind, rest]));
+  }
+
+  get maxAttempts(): number {
+    return this.opts.maxAttempts;
   }
 
   retry(taskId: string): void {

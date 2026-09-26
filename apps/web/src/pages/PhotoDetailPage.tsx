@@ -5,6 +5,7 @@ import { displayUrl, getPhoto, getPhotoContext, originalUrl, thumbnailUrl } from
 import type { AlbumRef, PhotoDetail } from '../api/types';
 import { ErrorState, Loading } from '../components/common/states';
 import { AddToAlbumDialog, DeletePhotoDialog, EditDescriptionDialog, MovePhotoDialog, RemoveFromAlbumDialog } from '../components/dialogs/PhotoDialogs';
+import { DescriptionBlock } from '../components/photos/DescriptionBlock';
 import { formatBytes, formatTakenAt } from '../format';
 
 type DetailDialog = { kind: 'edit' } | { kind: 'add' } | { kind: 'delete' } | { kind: 'move'; from: AlbumRef } | { kind: 'remove'; album: AlbumRef } | null;
@@ -124,17 +125,7 @@ export function PhotoDetailPage() {
 
         <section className="side-section">
           <h2>Description</h2>
-          {p.description?.effective ? <p className="description">{p.description.effective}</p> : <p className="muted">No description yet.</p>}
-          {p.description && p.description.tags.length > 0 && (
-            <ul className="tags">
-              {p.description.tags.map((t) => (
-                <li key={t}>{t}</li>
-              ))}
-            </ul>
-          )}
-          <button type="button" className="btn btn-small" onClick={() => setDialog({ kind: 'edit' })}>
-            {p.description?.effective ? 'Edit description' : 'Add description'}
-          </button>
+          <DescriptionBlock photo={p} onEdit={() => setDialog({ kind: 'edit' })} />
         </section>
 
         <section className="side-section">

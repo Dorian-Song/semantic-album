@@ -10,7 +10,9 @@ import { migrate } from './db/migrate.js';
 import { ImportService } from './imports/import-service.js';
 import { createHttpServer, registerRoutes, type LoggerOption } from './ingress/http.js';
 import { PhotoQueries } from './photos/photo-queries.js';
+import { CaptionWorker } from './processing/caption-worker.js';
 import { TaskService, type TaskOptions } from './processing/task-service.js';
+import { SettingsService } from './settings/settings-service.js';
 import { KeyedMutex } from './shared/keyed-mutex.js';
 import { ensureDataDir } from './storage/data-dir.js';
 import { GarbageCollector } from './storage/garbage-collector.js';
@@ -24,6 +26,7 @@ export interface Services {
   photos: PhotoQueries;
   imports: ImportService;
   tasks: TaskService;
+  settings: SettingsService;
   gc: GarbageCollector;
 }
 
@@ -46,6 +49,8 @@ export async function createApp(
 
   const albums = new AlbumService(db);
   const tasks = new TaskService(ctx, app.log, taskOptions);
+  const settings = new SettingsService(db);
+  tasks.register('caption', new CaptionWorker(ctx, settings, tasks, tasks.maxAttempts));
   const assets = new AssetService(ctx, albums, tasks);
   const services: Services = {
     ctx,
@@ -55,6 +60,7 @@ export async function createApp(
     photos: new PhotoQueries(db),
     imports: new ImportService(ctx, albums, assets, app.log),
     tasks,
+    settings,
     gc: new GarbageCollector(ctx, app.log),
   };
   await registerRoutes(app, services);

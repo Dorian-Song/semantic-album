@@ -808,3 +808,82 @@ a {
   color: var(--color-muted);
   font-weight: 500;
 }
+
+/* ---------- settings form ---------- */
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.privacy-note {
+  background: #fff8e6;
+  border: 1px solid #f3e1b0;
+  border-radius: var(--radius-small);
+  padding: 10px 14px;
+  margin: 0;
+  font-size: 0.925rem;
+}
+.toggle {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-weight: 550;
+}
+.toggle input {
+  width: 18px;
+  height: 18px;
+}
+.settings-group {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.settings-group legend {
+  font-weight: 600;
+  padding: 0 6px;
+}
+.settings-group details summary {
+  cursor: pointer;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+.settings-group details .field {
+  margin-top: 8px;
+}
+.field-narrow input {
+  max-width: 120px;
+}
+.secret-saved {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+}
+.danger-text {
+  color: var(--color-danger);
+}
+.form-hint {
+  margin: 0;
+  color: var(--color-warn);
+  font-size: 0.9rem;
+}
+.test-row p {
+  margin: 6px 0 0;
+}
+.test-ok {
+  color: var(--color-ok);
+}
+.description-meta {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin: 0 0 6px;
+}
+.description-status {
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  font-style: italic;
+}

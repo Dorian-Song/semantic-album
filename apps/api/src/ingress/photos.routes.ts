@@ -8,7 +8,7 @@ import { idParams, pageQuery, type PageQuery } from './schemas.js';
 
 type IdParams = { Params: { id: string } };
 
-export function registerPhotoRoutes(app: FastifyInstance, { albums, assets, photos, store }: Services): void {
+export function registerPhotoRoutes(app: FastifyInstance, { albums, assets, photos, store, tasks }: Services): void {
   // Asset IDs map to fixed bytes, so image responses can be cached indefinitely.
   async function sendFile(reply: FastifyReply, key: string | null, mime: string, filename?: string) {
     if (!key) throw notFound('Image');
@@ -36,8 +36,14 @@ export function registerPhotoRoutes(app: FastifyInstance, { albums, assets, phot
   app.get<IdParams & { Querystring: { album?: string } }>(
     '/api/photos/:id',
     { schema: { params: idParams, querystring: { type: 'object', properties: { album: { type: 'string' } } } } },
-    async (req) => photos.detail(req.params.id, req.query.album),
+    async (req) => ({ ...photos.detail(req.params.id, req.query.album), processing: tasks.statusOf(req.params.id) }),
   );
+
+  /** Queue a fresh AI description. A manual description, if any, stays the one shown and searched. */
+  app.post<IdParams>('/api/photos/:id/caption', { schema: { params: idParams } }, async (req, reply) => {
+    photos.detail(req.params.id); // 404 for missing or hidden photos
+    return reply.code(202).send({ revision: tasks.enqueueNextRevision(req.params.id, 'caption') });
+  });
 
   app.get<IdParams & { Querystring: { album?: string } }>(
     '/api/photos/:id/context',

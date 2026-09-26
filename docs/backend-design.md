@@ -194,6 +194,14 @@ A photo in several selected albums appears once, with all album names listed in 
 
 The caption adapter uses one internal prompt/result contract but separate `deepseek-responses.ts` and `openai-responses.ts` request builders/parsers. DeepSeek is the primary provider. DeepSeek's [vision guide](https://api-docs.deepseek.com/guides/vision/) currently documents `deepseek-flash` image input through Responses `input_image`; validate the configured model at runtime and surface API errors. OpenAI is called only for a photo whose DeepSeek attempt ends in a non-retryable error (format rejected, content refused, invalid response) or exhausts its retries, and only if a fallback key is configured. Record the provider that produced each draft. Treat provider options as provider-specific. Both providers receive photo bytes, so the settings and import flow must disclose that transfer.
 
+Implementation notes (build step 4):
+
+- AI descriptions are **off until the user turns them on** in Settings, next to the disclosure text. While off, or while no DeepSeek key is saved, the caption queue is paused and nothing is sent.
+- DeepSeek: `POST {baseUrl}/responses`, `input_image` as a base64 data URL, `text.format = json_object` (the schema is described in the prompt and validated locally), `reasoning.effort = none`. OpenAI: `POST {baseUrl}/responses` with a strict `json_schema` and no temperature/reasoning options, since not every model accepts them.
+- HTTP errors map onto the task queue: 401/403/402/404/429 pause the whole caption queue (no attempt spent, no OpenAI call); 400/413/415/422, unfinished responses, and invalid JSON are permanent for that photo and trigger the fallback; timeouts and 5xx retry with backoff, and the fallback is tried on the last attempt.
+- `POST /api/settings/test-caption` checks a saved provider with a small generated picture, never a user photo.
+- `POST /api/photos/:id/caption` queues the next caption revision; a successful caption queues enrichment with the same revision.
+
 ### n8n enrichment workflow
 
 For the course's LCNC database-connectivity requirement, the n8n workflow is real application behavior:
@@ -241,7 +249,10 @@ These routes are a proposed contract; use consistent IDs, pagination, error bodi
 | `PATCH /api/photos/:id/description` | Set/clear manual description override. |
 | `POST /api/photos/:id/albums`, `DELETE /api/albums/:id/photos/:photoId` | Add/remove a membership. |
 | `POST /api/photos/:id/move`, `DELETE /api/photos/:id` | Move between albums / delete from library. |
-| `POST /api/tasks/:id/retry` | Retry a failed caption, embedding, or enrichment task. |
+| `POST /api/tasks/:id/retry`, `POST /api/processing/:kind/retry-failed` | Retry one failed task, or every failed task of a kind. |
+| `GET /api/processing` | Per-kind queue counts, and why a kind is paused. |
+| `POST /api/photos/:id/caption` | Queue a new AI description revision (manual text is kept). |
+| `POST /api/settings/test-caption` | Test a saved provider with a generated picture. |
 | `POST /api/search` | Query, mode, album scope, optional date/camera filters, page; returns each photo once plus all memberships. |
 | `POST /api/search/stream` | Progressive NDJSON variant of the first page (enabled only if needed). |
 | `GET /api/search/facets` | Camera models and date range present in the library, for filter controls. |
