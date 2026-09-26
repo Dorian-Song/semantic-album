@@ -10,6 +10,7 @@ import { migrate } from './db/migrate.js';
 import { ImportService } from './imports/import-service.js';
 import { createHttpServer, registerRoutes, type LoggerOption } from './ingress/http.js';
 import { PhotoQueries } from './photos/photo-queries.js';
+import { TaskService, type TaskOptions } from './processing/task-service.js';
 import { KeyedMutex } from './shared/keyed-mutex.js';
 import { ensureDataDir } from './storage/data-dir.js';
 import { GarbageCollector } from './storage/garbage-collector.js';
@@ -22,11 +23,16 @@ export interface Services {
   assets: AssetService;
   photos: PhotoQueries;
   imports: ImportService;
+  tasks: TaskService;
   gc: GarbageCollector;
 }
 
 /** Composition root: storage, database, services, and routes. Background work is started by the caller. */
-export async function createApp(env: Env, logger: LoggerOption = true): Promise<{ app: FastifyInstance; services: Services }> {
+export async function createApp(
+  env: Env,
+  logger: LoggerOption = true,
+  taskOptions: Partial<TaskOptions> = {},
+): Promise<{ app: FastifyInstance; services: Services }> {
   ensureDataDir(env.dataDir);
   const db = openDatabase(path.join(env.dataDir, 'album.sqlite'));
   const applied = migrate(db);
@@ -39,7 +45,8 @@ export async function createApp(env: Env, logger: LoggerOption = true): Promise<
   app.log.info({ heifDec: !!tools.heifDec, ffmpeg: !!tools.ffmpeg, magick: !!tools.magick }, 'image decoders detected');
 
   const albums = new AlbumService(db);
-  const assets = new AssetService(ctx, albums);
+  const tasks = new TaskService(ctx, app.log, taskOptions);
+  const assets = new AssetService(ctx, albums, tasks);
   const services: Services = {
     ctx,
     store,
@@ -47,11 +54,13 @@ export async function createApp(env: Env, logger: LoggerOption = true): Promise<
     assets,
     photos: new PhotoQueries(db),
     imports: new ImportService(ctx, albums, assets, app.log),
+    tasks,
     gc: new GarbageCollector(ctx, app.log),
   };
   await registerRoutes(app, services);
   app.addHook('onClose', async () => {
     services.gc.stop();
+    services.tasks.stop();
     db.close();
   });
   return { app, services };

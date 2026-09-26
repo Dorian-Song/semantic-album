@@ -1,16 +1,18 @@
 import multipart from '@fastify/multipart';
-import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import Fastify, { LogController, type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import type { Services } from '../app.js';
 import { AppError } from '../shared/errors.js';
 import { registerAlbumRoutes } from './albums.routes.js';
 import { checkHealth } from './health.js';
 import { registerImportRoutes } from './imports.routes.js';
 import { registerPhotoRoutes } from './photos.routes.js';
+import { registerProcessingRoutes } from './processing.routes.js';
 
 export type LoggerOption = NonNullable<FastifyServerOptions['logger']>;
 
 export function createHttpServer(logger: LoggerOption): FastifyInstance {
-  return Fastify({ logger, disableRequestLogging: true });
+  // Per-request lines drown out the useful ones (the UI polls progress); errors are still logged.
+  return Fastify({ logger, logController: new LogController({ disableRequestLogging: true }) });
 }
 
 export async function registerRoutes(app: FastifyInstance, services: Services): Promise<void> {
@@ -35,4 +37,5 @@ export async function registerRoutes(app: FastifyInstance, services: Services): 
   registerAlbumRoutes(app, services);
   registerPhotoRoutes(app, services);
   registerImportRoutes(app, services);
+  registerProcessingRoutes(app, services);
 }

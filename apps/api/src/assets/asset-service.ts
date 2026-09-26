@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import type { AppContext } from '../context.js';
 import type { AlbumService } from '../albums/album-service.js';
+import type { TaskService } from '../processing/task-service.js';
 import { refreshPhotoText } from '../search/fts-index.js';
 import { badRequest, notFound } from '../shared/errors.js';
 import { newId, nowIso } from '../shared/ids.js';
@@ -20,6 +21,7 @@ export class AssetService {
   constructor(
     private readonly ctx: AppContext,
     private readonly albums: AlbumService,
+    private readonly tasks: TaskService,
   ) {}
 
   /**
@@ -78,7 +80,10 @@ export class AssetService {
         );
         this.albums.insertMembership(albumId, id, displayFilename);
         refreshPhotoText(db, id);
+        // A photo counts as imported now; AI work is queued separately and never blocks the import.
+        this.tasks.enqueue(id, ['caption', 'embedding']);
       })();
+      this.tasks.kick();
       return { outcome: 'imported', assetId: id };
     });
   }

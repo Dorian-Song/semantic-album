@@ -7,11 +7,12 @@ import { promisify } from 'node:util';
 import sharp from 'sharp';
 import { createApp } from '../src/app.js';
 import type { Env } from '../src/config/env.js';
+import type { TaskOptions } from '../src/processing/task-service.js';
 
 const run = promisify(execFile);
 
-export async function testApp(overrides: Partial<Env> = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'album-it-'));
+export async function testApp(overrides: Partial<Env> = {}, taskOptions: Partial<TaskOptions> = {}, reuseDir?: string) {
+  const dir = reuseDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'album-it-'));
   const env: Env = {
     apiHost: '127.0.0.1',
     apiPort: 0,
@@ -24,12 +25,14 @@ export async function testApp(overrides: Partial<Env> = {}) {
     assetGraceMs: 60_000,
     ...overrides,
   };
-  const { app, services } = await createApp(env, false);
+  const { app, services } = await createApp(env, false, { pollMs: 20, baseDelayMs: 10, ...taskOptions });
   return {
     app,
     services,
     dir,
     env,
+    /** Stops the app but keeps DATA_DIR, as a crash or restart would. */
+    stop: () => app.close(),
     close: async () => {
       await app.close();
       fs.rmSync(dir, { recursive: true, force: true });

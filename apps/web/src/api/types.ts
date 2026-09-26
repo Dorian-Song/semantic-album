@@ -58,6 +58,21 @@ export interface ImportJob {
   counts: { total: number; imported: number; skipped: number; failed: number; pending: number };
   problems: { filename: string; state: string; reason: string | null }[];
   missingKeys: string[];
+  processing: Record<TaskKind, { total: number; done: number; failed: number }>;
   createdAt: string;
   updatedAt: string;
+}
+
+export type TaskKind = 'caption' | 'embedding' | 'enrichment';
+
+export interface KindSummary {
+  kind: TaskKind;
+  registered: boolean;
+  pausedReason: string | null;
+  pausedUntil: string | null;
+  pending: number;
+  retrying: number;
+  running: number;
+  succeeded: number;
+  failed: number;
 }

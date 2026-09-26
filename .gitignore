@@ -7,3 +7,4 @@ automation/n8n/.env
 *.sqlite
 *.sqlite-*
 models/
+datasets/
