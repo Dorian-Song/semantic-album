@@ -91,7 +91,3 @@ Working today: everything listed under *What it does*. Planned next:
 - A full accessibility pass: keyboard use, screen-reader labels, colour contrast.
 
 Photos in the screenshots are from [Unsplash](https://unsplash.com).
-
-## Team
-
-Saturn (backend) and Dorian Song (frontend), with AI-assisted coding from Claude.
