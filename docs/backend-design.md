@@ -4,7 +4,7 @@
 
 The backend is a single-user TypeScript service. It owns the photo library, metadata, background-job state, search indexes, and local model lifecycle. It exposes a REST API to the separate frontend. A self-hosted n8n instance handles a small, demonstrable text-enrichment workflow; it is not in the critical path for album reads, deletion, or search. Keep modules separate, but do not add microservices, accounts, multi-tenant machinery, message brokers, or distributed transactions.
 
-Recommended choices: Node.js + TypeScript, a small HTTP framework such as Fastify, SQLite with WAL and foreign keys, FTS5 for lexical search, `sqlite-vec` for image vectors, and app-owned files for originals/derivatives/thumbnails. Use a single backend writer process; CPU-heavy image work may run in a small worker-thread or child-process pool, but all SQLite writes go through the main process. The inference engine is a separate **locally managed** vLLM process; start/stop scripts supervise it together with the web and API processes so users do not need to operate it manually.
+The implementation uses Node.js + TypeScript, Fastify, SQLite with WAL and foreign keys, FTS5 for lexical search, float32 vectors in SQLite with an in-memory exact scan, and app-owned files for originals/derivatives/thumbnails. Use a single backend writer process; CPU-heavy image work may run in a small worker-thread or child-process pool, but all SQLite writes go through the main process. The inference engine is a separate **locally managed** vLLM process; start/stop scripts supervise it together with the web and API processes so users do not need to operate it manually.
 
 By default the API listens on `127.0.0.1` only. Host-folder import reads arbitrary directories on the machine, so binding to other interfaces must be an explicit configuration choice.
 
@@ -12,7 +12,7 @@ By default the API listens on `127.0.0.1` only. Host-folder import reads arbitra
 
 The embedding model is fixed: Qwen3-VL-Embedding-2B at its full 2048-dimensional output. Qwen's [model card](https://huggingface.co/Qwen/Qwen3-VL-Embedding-2B) identifies the 2B model as multimodal with up to 2048 output dimensions. The [Qwen project](https://github.com/QwenLM/Qwen3-VL-Embedding) documents vLLM usage and requires vLLM 0.14.0 or newer for its example. Pin one Hugging Face revision and one vLLM version in configuration. Store the model ID, revision, and dimension in a one-row `embedding_meta` table when the vector index is created. At startup, refuse vector writes and queries if they differ, rather than mixing incompatible vectors.
 
-Before creating the vector index, check that a text embedding and an image embedding both return 2048 dimensions. The development machine has an 8 GB RTX 4060 Laptop GPU. Start vLLM with an explicit, conservative `--gpu-memory-utilization`, a short `--max-model-len`, and one concurrent image request, then measure. If the model cannot start, leave the vector service unavailable and keep **Words** search usable.
+Before creating the vector index, check that a text embedding and an image embedding both return 2048 dimensions. The development machine has an 8 GB RTX 4060 desktop GPU. Start vLLM with an explicit, conservative `--gpu-memory-utilization`, a short `--max-model-len`, and bounded image concurrency, then measure. If the model cannot start, leave the vector service unavailable and keep **Words** search usable.
 
 ## Proposed tree
 
@@ -54,7 +54,7 @@ apps/api/
     search/
       search-service.ts         # scope, filters, rank, dedupe, membership hydration
       lexical-search.ts         # FTS5 and conservative typo/prefix fallback
-      vector-search.ts          # sqlite-vec query
+      vector-index.ts           # SQLite BLOB vectors and exact in-memory scan
       hybrid-rank.ts
     exports/
       export-service.ts         # ZIP of originals + JSON/CSV/XMP sidecars
@@ -166,7 +166,7 @@ Scope is one album, selected album IDs, or all. Optional metadata filters are ca
 - **The index guards its model**: `embedding_meta` is written with the first vector. A non-empty index refuses vectors from a different model, revision, or dimension, and the embedding queue pauses with a "must be rebuilt" message.
 - **Words** uses FTS5 with bm25 weights caption 1.0, tags and n8n categories 2.0, filenames 0.5; terms are OR-ed prefixes, so photos matching more terms rank higher. A term with no prefix match is replaced by the closest indexed word within edit distance 1 (2 for words of 7+ letters). On ties, a word containing the typed letters in order is preferred, then the more common word, and the UI names the correction.
 - **Meaning** ranks every eligible photo by similarity and keeps the top 300; **Both** fuses the Words and Meaning top-300 lists with reciprocal-rank fusion (k = 60). Query vectors are cached (200 most recent).
-- **Measured on the development machine** (8 GB RTX 4060 Laptop, vLLM 0.30.0, 0.8 GPU memory utilisation): about 6.1 GB of GPU memory in use, 33–80 s start-up, about 12 photos/s embedded at 6 requests in flight, and about 25 ms per text query. `scripts/search-benchmark.mjs` measures recall and p50/p95 search latency on an imported COCO library.
+- **Measured on the development machine** (8 GB RTX 4060 desktop, vLLM 0.30.0, 0.8 GPU memory utilisation): about 6.1 GB of GPU memory in use, 33–80 s start-up, about 12 photos/s embedded at 6 requests in flight, and about 25 ms per text query. `scripts/search-benchmark.mjs` measures recall and p50/p95 search latency on an imported COCO library.
 
 ### Retrieval v2 (measured; see decision log "Retrieval improvements")
 

@@ -1,4 +1,4 @@
-# Album — a local-first AI photo library
+# Semantic Album — a local-first AI photo library
 
 Album is a self-hosted web application for organizing and finding personal photos. It imports images from selected files or a folder on the host machine, keeps its own copies, and lets one photo appear in several albums without storing duplicate bytes. Users can browse albums, edit AI-written descriptions, and search by words or visual meaning. The app is designed as a two-person course project and a usable open-source prototype, not a multi-user photo service.
 
@@ -40,10 +40,14 @@ The backend, database, and photo files run on the user's machine. n8n is the ope
 - [Frontend structure](docs/frontend-structure.md): pages, reusable components, routes, and proposed file tree.
 - [Implementation handoff](docs/implementation-handoff.md): build order and testable acceptance scenarios for another development model.
 - [Decision log](docs/decision-log.md): where and why this design differs from the original team-formation plan, including the low-code/code boundary.
+- [Code review notes](docs/code-review-2026-09-26.md): known correctness issues to address after the initial prototype.
+- [Lab 2 Version 2 plan](docs/lab-2-v2-plan.md): AI-assisted Figma prototype, coded responsive/accessibility changes, and submission evidence.
 
-Proposed repository shape after implementation: `apps/api/` for the backend, `apps/web/` for the frontend, `automation/n8n/` for the exported workflow and its deployment files, `docs/` for design/operation notes, `design/` for visual references, and root-level start/stop scripts plus package/workspace configuration.
+## Repository layout
 
-The chosen direction is a TypeScript frontend/backend with SQLite, FTS5, a SQLite vector extension, a managed local vLLM process, and provider-specific Responses adapters. This document specifies behavior; dependency versions and GPU memory use must be verified on the target machine during implementation. The current development machine has an 8 GB RTX 4060 Laptop GPU, so the embedding service must fit in that budget.
+The current application (Version 3 onward) is in `Album/`: `Album/src/` is the backend, `Album/app/` the web app, and `Album/api/` the Postman collection for the REST API. Start it with `Album/start.sh`. The self-hosted low-code services are in `n8n/` and `baserow/`; `docs/architecture.md` describes the current module structure. `apps/` and `automation/` hold the Version 2 prototype, kept for history; the setup steps below still describe that prototype.
+
+The implementation uses a TypeScript frontend/backend with SQLite, FTS5, float32 vectors stored in SQLite and scanned in memory, a managed local vLLM process, and provider-specific Responses adapters. Dependency versions and GPU memory use must be verified on each target machine. The development machine has an 8 GB RTX 4060 desktop GPU, so the embedding service must fit in that budget.
 
 ## Running locally
 

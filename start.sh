@@ -39,7 +39,7 @@ if [ "${VLLM_ENABLED:-false}" = true ]; then
   vllm_bin=.venv/bin/vllm
   [ -x "$vllm_bin" ] || vllm_bin=$(command -v vllm || true)
   if [ -n "$vllm_bin" ]; then
-    # Measured on an 8 GB RTX 4060 Laptop GPU: about 6.1 GB in use at 0.8, ~80 s cold start.
+    # Measured on an 8 GB RTX 4060 desktop GPU: about 6.1 GB in use at 0.8, ~80 s cold start.
     start_proc vllm "'$vllm_bin' serve '${VLLM_MODEL:-models/Qwen3-VL-Embedding-2B}' --runner pooling \
       --served-model-name qwen3-vl-embedding-2b --host 127.0.0.1 --port '${VLLM_PORT:-8000}' \
       --gpu-memory-utilization '${VLLM_GPU_MEMORY_UTILIZATION:-0.8}' --max-model-len '${VLLM_MAX_MODEL_LEN:-4096}' \

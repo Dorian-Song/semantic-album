@@ -63,7 +63,7 @@ Build steps 1–8 are implemented. The streaming search endpoint is not built; a
 
 ## Practical implementation notes
 
-- Verify library versions and inference behavior against current official documentation before pinning. In particular, test the exact Qwen/vLLM image request format on the 8 GB RTX 4060 Laptop GPU with conservative memory settings.
+- Verify library versions and inference behavior against current official documentation before pinning. In particular, test the exact Qwen/vLLM image request format on the 8 GB RTX 4060 desktop GPU with conservative memory settings.
 - The development machine already has `heif-dec`/`heif-convert` (libheif 1.23), `ffmpeg` 8.1 with HEVC and AV1 decoders, ImageMagick 7, and Docker. Detect tools at startup instead of assuming them on other machines, and document the optional system packages.
 - Keep generated images, SQLite files, API keys, the n8n encryption key, and downloaded model weights outside version control. Ship a sample configuration with placeholders.
 - Tests should cover the invariants above, especially cross-album membership hydration, last-reference deletion, duplicate/retry handling, format sniffing, and restart recovery. A small integration test with temporary SQLite/object storage is more useful here than tests that repeat service internals.

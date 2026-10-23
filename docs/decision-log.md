@@ -42,7 +42,7 @@ This log records where the design differs from the *Team Formation and Role Assi
 
 - **Vision:** DeepSeek is primary. OpenAI is used only when DeepSeek fails for a photo, keeping cost low. The provider is recorded per caption.
 - **Embedding:** Qwen3-VL-Embedding-2B, one pinned revision, 2048 dimensions. It is fixed for the project, and a startup guard prevents mixing vectors from a different model.
-- **Hardware:** the development GPU is an 8 GB RTX 4060 Laptop, not the 12 GB assumed earlier, so memory settings are conservative and must be measured.
+- **Hardware:** the development GPU is an 8 GB RTX 4060 desktop, not the 12 GB assumed earlier, so memory settings are conservative and must be measured.
 
 ## 2026-09-26 — Image formats
 

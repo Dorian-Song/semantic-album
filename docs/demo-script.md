@@ -28,7 +28,7 @@ A recorded end-to-end path for the course presentation, about 8–10 minutes. It
 
 ## Figures to quote
 
-From the development machine (RTX 4060 Laptop, 8 GB):
+From the development machine (RTX 4060 desktop, 8 GB):
 
 - Embedding model: about 6.1 GB of GPU memory, about 12 photos/s, about 25 ms per text query.
 - Caption→image Recall@1/5/10 on 300 COCO images: 72.0 / 94.0 / 98.3%.
