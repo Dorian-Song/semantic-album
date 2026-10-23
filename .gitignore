@@ -9,3 +9,6 @@ automation/n8n/.env
 models/
 datasets/
 .venv/
+data-demo/
+# Course reports and screenshots contain Unsplash demo photos, which may not be redistributed.
+coursework/
