@@ -451,15 +451,6 @@ code {
 .menu > summary::-webkit-details-marker {
   display: none;
 }
-.album-meta .menu > summary {
-  padding: 6px;
-  border-radius: 8px;
-  color: var(--muted);
-  display: flex;
-}
-.album-meta .menu > summary:hover {
-  background: #eef2f6;
-}
 .menu-list {
   position: absolute;
   right: 0;
@@ -1829,13 +1820,24 @@ textarea {
   height: 100%;
   object-fit: cover;
 }
+.mode-field {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+.mode-field legend {
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 10px;
+}
 .segmented {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: 11px;
-  padding: 3px;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
   background: var(--surface-2);
-  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 .segmented label {
   padding: 8px 22px;
@@ -1961,17 +1963,189 @@ textarea {
 }
 
 /* ============ settings ============ */
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
-  align-items: start;
-}
-.settings-col {
+.settings-rows {
   display: flex;
   flex-direction: column;
   gap: 22px;
+}
+.settings-row {
+  display: grid;
+  gap: 22px;
+  /* stretch (the default) gives every card in a row the row's height */
+}
+.settings-row.cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.settings-card {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+}
+.settings-card > .card-body {
+  flex: 1;
+}
+.settings-card > .card-body > .stack {
+  flex: 1;
+}
+.settings-card .form-actions,
+.settings-card .card-foot {
+  margin-top: auto;
+}
+.segmented {
+  border: none;
+  margin: 0;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.segmented legend {
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 10px;
+  float: left;
+  width: 100%;
+}
+.segmented label {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 9px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.segmented label:hover {
+  color: var(--text);
+}
+.segmented label.is-active {
+  background: var(--surface);
+  color: var(--accent-strong);
+  box-shadow: 0 1px 3px rgb(16 24 40 / 12%);
+}
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.segmented label:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.kind-tiles {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.kind-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  min-width: 0;
+}
+.kind-tile-head,
+.kind-tile-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.kind-tile-foot {
+  font-variant-numeric: tabular-nums;
+}
+.kind-tile .link-btn {
+  align-self: flex-start;
+}
+.caption-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 0.93rem;
+}
+.provider-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+.stat-row div {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.stat-row dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.stat-row dd {
+  margin: 2px 0 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+.history-table th,
+.history-table td {
+  text-align: left;
+  padding: 10px 12px;
+  vertical-align: top;
+  white-space: nowrap;
+}
+.history-table thead th {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.history-table tbody tr + tr > * {
+  border-top: 1px solid var(--border);
+}
+.history-table tbody th,
+.history-table tbody td {
+  font-weight: 600;
+}
+.history-table tbody th > span,
+.history-table tbody td > span {
+  display: block;
+}
+.history-table .small {
+  font-weight: 400;
 }
 .card {
   background: var(--surface);
@@ -2345,10 +2519,378 @@ textarea {
   font-size: 0.8rem;
 }
 
+/* ============ polish: depth, blur, motion ============ */
+/* Kept together and after the base rules so it can be reviewed or dropped as one block. */
+:root {
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --shadow-photo: 0 1px 2px rgb(16 24 40 / 8%), 0 10px 28px rgb(16 24 40 / 12%);
+  --shadow-photo-hover: 0 2px 4px rgb(16 24 40 / 8%), 0 18px 40px rgb(16 24 40 / 20%);
+  --topbar-h: 74px;
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* page enter: each page's top-level blocks rise in, one after another */
+.content > * {
+  animation: fade-up 0.45s var(--ease-out) both;
+}
+.content > :nth-child(2) {
+  animation-delay: 0.06s;
+}
+.content > :nth-child(n + 3) {
+  animation-delay: 0.12s;
+}
+
+/* glass top bar that stays while scrolling */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  padding: 14px 32px;
+  background: color-mix(in srgb, var(--bg) 74%, transparent);
+  backdrop-filter: blur(18px) saturate(1.6);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+.toolbar,
+.selection-bar {
+  top: var(--topbar-h);
+}
+.detail-side {
+  top: calc(var(--topbar-h) + 14px);
+  max-height: calc(100vh - var(--topbar-h) - 28px);
+  box-shadow: var(--shadow);
+}
+.sidebar nav a.active {
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 4px 12px rgb(16 24 40 / 6%);
+}
+
+/* home banner: the featured photo, blurred, washes the background */
+.banner {
+  isolation: isolate;
+  min-height: 200px;
+  background: #eef3f9;
+  border-color: rgb(255 255 255 / 70%);
+  box-shadow: var(--shadow);
+}
+.banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(100deg, rgb(255 255 255 / 90%) 0%, rgb(255 255 255 / 60%) 42%, rgb(255 255 255 / 20%) 100%);
+}
+.banner-ambient {
+  position: absolute;
+  inset: -60px;
+  width: calc(100% + 120px);
+  height: calc(100% + 120px);
+  object-fit: cover;
+  z-index: -2;
+  filter: blur(46px) saturate(1.6);
+  opacity: 0.7;
+  animation: fade-in 0.8s ease both;
+}
+.banner-collage {
+  mask-image: none;
+}
+.banner-collage img {
+  box-shadow: 0 14px 34px rgb(16 24 40 / 24%);
+  transition: transform 0.5s var(--ease-out);
+  animation: fade-up 0.6s var(--ease-out) both;
+}
+.banner-collage .collage-1 {
+  animation-delay: 0.08s;
+}
+.banner-collage .collage-2 {
+  animation-delay: 0.16s;
+}
+.banner:hover .collage-0 {
+  transform: rotate(-9deg) translate(2px, 10px);
+}
+.banner:hover .collage-1 {
+  transform: rotate(1deg) translateY(-14px) scale(1.04);
+}
+.banner:hover .collage-2 {
+  transform: rotate(10deg) translate(-2px, 12px);
+}
+
+/* album cards: the cover is the card; a soft stack of prints sits behind it */
+.album-grid {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 44px 22px;
+  padding-top: 26px;
+}
+.album-card {
+  position: relative;
+  isolation: isolate;
+  background: none;
+  border: none;
+  box-shadow: none;
+  transition: transform 0.35s var(--ease-out);
+}
+.album-card::before,
+.album-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.4s var(--ease-out);
+}
+.album-card::before {
+  z-index: -1;
+  background: #e8edf4;
+  transform: translateY(-15px) scale(0.94);
+}
+.album-card::after {
+  z-index: -2;
+  background: #dde4ee;
+  transform: translateY(-28px) scale(0.88);
+  opacity: 0.7;
+}
+.album-card:hover {
+  transform: translateY(-3px);
+  box-shadow: none;
+}
+.album-card:hover::before {
+  transform: translateY(-19px) scale(0.94) rotate(-2deg);
+}
+.album-card:hover::after {
+  transform: translateY(-34px) scale(0.88) rotate(2.5deg);
+}
+.album-cover {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-photo);
+  transition: box-shadow 0.35s var(--ease-out);
+}
+.album-cover:hover {
+  text-decoration: none;
+}
+.album-card:hover .album-cover {
+  box-shadow: var(--shadow-photo-hover);
+}
+.album-cover img {
+  transition: transform 0.7s var(--ease-out);
+}
+.album-card:hover .album-cover img {
+  transform: scale(1.06);
+}
+.album-cover::after {
+  content: '';
+  position: absolute;
+  inset: 40% 0 0;
+  background: linear-gradient(180deg, transparent, rgb(8 12 20 / 66%));
+  pointer-events: none;
+}
+.album-meta {
+  position: absolute;
+  left: 16px;
+  right: 58px;
+  bottom: 14px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0;
+}
+.album-name {
+  color: #fff;
+  font-weight: 650;
+  font-size: 1.08rem;
+  text-shadow: 0 1px 10px rgb(0 0 0 / 35%);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.album-count-label {
+  color: rgb(255 255 255 / 86%);
+  font-size: 0.85rem;
+}
+.album-menu {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+}
+.album-menu .menu > summary {
+  display: flex;
+  padding: 7px;
+  border-radius: 10px;
+  color: #fff;
+  background: rgb(255 255 255 / 16%);
+  border: 1px solid rgb(255 255 255 / 28%);
+  backdrop-filter: blur(10px);
+  transition: background 0.15s;
+}
+.album-menu .menu > summary:hover {
+  background: rgb(255 255 255 / 32%);
+}
+.album-menu .menu-list {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+/* album page header: the cover, blurred, tints the header */
+.album-header {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 26px;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.album-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, rgb(255 255 255 / 78%), rgb(255 255 255 / 45%));
+}
+.album-header-ambient {
+  position: absolute;
+  inset: -80px;
+  width: calc(100% + 160px);
+  height: calc(100% + 160px);
+  object-fit: cover;
+  z-index: -2;
+  filter: blur(50px) saturate(1.6);
+  opacity: 0.75;
+  animation: fade-in 0.8s ease both;
+}
+.album-header-cover {
+  border: 4px solid #fff;
+  box-shadow: 0 12px 32px rgb(16 24 40 / 24%);
+}
+.album-header .stages {
+  background: rgb(255 255 255 / 55%);
+  border-color: rgb(255 255 255 / 75%);
+  backdrop-filter: blur(12px);
+}
+.album-header .stage {
+  border-left-color: rgb(16 24 40 / 10%);
+}
+
+/* photo tiles: fade in row by row, lift on hover */
+.photo-grid {
+  gap: 14px;
+}
+.photo-card {
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out);
+  animation: fade-up 0.5s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 28ms);
+}
+.photo-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-photo-hover);
+}
+.photo-link img {
+  transition: transform 0.7s var(--ease-out), filter 0.2s;
+}
+.photo-link:hover img {
+  transform: scale(1.06);
+}
+.photo-check {
+  background: rgb(255 255 255 / 70%);
+  backdrop-filter: blur(8px);
+}
+
+/* search results */
+.result-card {
+  animation: fade-up 0.5s var(--ease-out) both;
+}
+.result-thumb {
+  transition: transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out);
+}
+.result-thumb:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-photo-hover);
+}
+.result-thumb img {
+  transition: transform 0.7s var(--ease-out);
+}
+.result-thumb:hover img {
+  transform: scale(1.06);
+}
+.result-album {
+  background: rgb(255 255 255 / 68%);
+  backdrop-filter: blur(10px) saturate(1.4);
+  box-shadow: none;
+  border: 1px solid rgb(255 255 255 / 60%);
+}
+
+/* photo detail: the photo floats over a blurred copy of itself */
+.viewer {
+  isolation: isolate;
+  background: #0b0f17;
+  box-shadow: 0 2px 6px rgb(16 24 40 / 8%), 0 24px 60px rgb(16 24 40 / 22%);
+}
+.viewer-ambient {
+  position: absolute;
+  inset: -90px;
+  width: calc(100% + 180px);
+  height: calc(100% + 180px);
+  object-fit: cover;
+  z-index: -1;
+  filter: blur(60px) saturate(1.5) brightness(0.72);
+  pointer-events: none;
+  animation: fade-in 0.6s ease both;
+}
+.viewer-image {
+  padding: 26px 76px;
+}
+.viewer-image img {
+  border-radius: 6px;
+  box-shadow: 0 22px 56px rgb(0 0 0 / 45%);
+  animation: fade-in 0.45s ease both;
+}
+.viewer-nav {
+  background: rgb(255 255 255 / 18%);
+  color: #fff;
+  border: 1px solid rgb(255 255 255 / 30%);
+  backdrop-filter: blur(12px);
+  box-shadow: none;
+}
+.viewer-nav:hover {
+  background: rgb(255 255 255 / 32%);
+}
+.viewer-count {
+  background: rgb(255 255 255 / 16%);
+  border: 1px solid rgb(255 255 255 / 24%);
+  backdrop-filter: blur(12px);
+}
+
+/* dialogs */
+.dialog::backdrop {
+  background: rgb(22 30 44 / 32%);
+  backdrop-filter: blur(8px);
+}
+
 /* ============ responsive (last, so it overrides the rules above) ============ */
 @media (max-width: 1280px) {
-  .settings-grid {
+  .provider-cols {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .kind-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .banner-collage {
     display: none;
@@ -2397,7 +2939,15 @@ textarea {
   }
   .topbar {
     flex-wrap: wrap;
-    padding: 12px 16px 0;
+    padding: 12px 16px;
+    position: static;
+  }
+  .toolbar,
+  .selection-bar {
+    top: 0;
+  }
+  .viewer-image {
+    padding: 12px;
   }
   .search-bar {
     flex-basis: 100%;
@@ -2435,6 +2985,10 @@ textarea {
   .photo-grid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   }
+  .album-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 36px 12px;
+  }
   .result-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
@@ -2443,7 +2997,10 @@ textarea {
   }
   .radio-cards,
   .form-row,
-  .history-stages {
+  .history-stages,
+  .settings-row.cols-2,
+  .provider-cols,
+  .kind-tiles {
     grid-template-columns: minmax(0, 1fr);
   }
   .kind-row {

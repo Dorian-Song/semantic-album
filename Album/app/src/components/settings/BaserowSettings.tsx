@@ -20,18 +20,25 @@ export function BaserowSettings() {
   );
 
   return (
-    <SettingsCard id="baserow-heading" icon="cloud" title="Baserow Database" subtitle="A low-code copy of albums, descriptions and tags." status={status}>
+    <SettingsCard id="baserow-heading" icon="cloud" title="Baserow Database" status={status}>
       <div className="stack">
-        <p className="muted small">
-          Album copies <strong>text only</strong> (album names, file names, descriptions, tags, capture details) to three linked Baserow tables every minute. The
-          library on this computer stays the source of truth.
-        </p>
-        {!s?.configured && <p className="muted small">Set BASEROW_URL, BASEROW_TOKEN and the three table ids in .env, then restart.</p>}
+        {!s?.configured && <p className="muted small">Not configured in .env.</p>}
         {s?.overview && (
           <>
-            <p className="small">
-              In Baserow: {s.overview.albums} albums · {s.overview.photos} photos · {s.overview.tags} tags
-            </p>
+            <dl className="stat-row">
+              <div>
+                <dt>Albums</dt>
+                <dd>{s.overview.albums.toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt>Photos</dt>
+                <dd>{s.overview.photos.toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt>Tags</dt>
+                <dd>{s.overview.tags.toLocaleString()}</dd>
+              </div>
+            </dl>
             {s.overview.topTags.length > 0 && (
               <ul className="tags" aria-label="Most used tags in Baserow">
                 {s.overview.topTags.map((t) => (
@@ -43,7 +50,7 @@ export function BaserowSettings() {
             )}
           </>
         )}
-        <div className="test-row">
+        <div className="test-row card-foot">
           <button type="button" className="btn btn-soft" disabled={!s?.configured || sync.isPending} onClick={() => sync.mutate()}>
             <Icon name="refresh" size={16} /> {sync.isPending ? 'Syncing…' : 'Sync now'}
           </button>

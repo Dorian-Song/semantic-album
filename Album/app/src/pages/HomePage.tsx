@@ -22,6 +22,7 @@ function readDismissed(): boolean {
 function Banner({ photoIds, onHide }: { photoIds: string[]; onHide: () => void }) {
   return (
     <section className="banner" aria-labelledby="welcome-title">
+      {photoIds[1] && <img className="banner-ambient" src={thumbnailUrl(photoIds[1])} alt="" aria-hidden="true" />}
       <div className="banner-text">
         <h1 id="welcome-title">Welcome to Album</h1>
         <p>A simple home for your most meaningful moments.</p>

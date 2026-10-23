@@ -149,8 +149,10 @@ export function PhotoDetailPage() {
         </div>
 
         <div className="viewer">
+          {/* The photo itself, blurred, fills the letterbox around it. */}
+          <img key={`ambient-${p.id}`} className="viewer-ambient" src={thumbnailUrl(p.id)} alt="" aria-hidden="true" />
           <button type="button" className="viewer-image" onClick={() => setZoomed(true)} aria-label="Open full size">
-            <img src={displayUrl(p.id)} alt={p.description?.effective ?? p.filename} />
+            <img key={p.id} src={displayUrl(p.id)} alt={p.description?.effective ?? p.filename} />
           </button>
           {prevId && (
             <Link to={hrefFor(prevId)} className="viewer-nav viewer-prev" aria-label="Previous photo">
@@ -260,18 +262,12 @@ export function PhotoDetailPage() {
             {ctxAlbum && (
               <button type="button" className="action" onClick={() => setDialog({ kind: 'remove', album: ctxAlbum })}>
                 <Icon name="image" size={20} />
-                <span>
-                  <strong>Remove from {ctxAlbum.name}</strong>
-                  <span className="muted small">This photo will stay in your library.</span>
-                </span>
+                <strong>Remove from {ctxAlbum.name}</strong>
               </button>
             )}
             <button type="button" className="action action-danger" onClick={() => setDialog({ kind: 'delete' })}>
               <Icon name="trash" size={20} />
-              <span>
-                <strong>Delete from Library</strong>
-                <span className="muted small">Removes this photo from every album.</span>
-              </span>
+              <strong>Delete from Library</strong>
             </button>
           </div>
         </section>

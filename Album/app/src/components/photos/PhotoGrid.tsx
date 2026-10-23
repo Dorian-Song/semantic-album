@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { thumbnailUrl } from '../../api/photos';
 import type { PhotoSummary } from '../../api/types';
@@ -13,10 +14,11 @@ interface Props {
 export function PhotoGrid({ photos, hrefFor, selected, onToggle }: Props) {
   return (
     <ul className="photo-grid">
-      {photos.map((p) => {
+      {photos.map((p, i) => {
         const isSelected = selected?.has(p.id) ?? false;
         return (
-          <li key={p.id} className={isSelected ? 'photo-card is-selected' : 'photo-card'}>
+          // --i staggers the fade-in of the first rows; later pages appear at once.
+          <li key={p.id} className={isSelected ? 'photo-card is-selected' : 'photo-card'} style={{ '--i': Math.min(i, 20) } as CSSProperties}>
             <Link to={hrefFor(p.id)} className="photo-link">
               <img src={thumbnailUrl(p.id)} alt={p.filename} loading="lazy" />
             </Link>

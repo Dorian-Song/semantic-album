@@ -8,9 +8,9 @@ export const retryFailed = (kind: TaskKind) => api<{ requeued: number }>(`/api/p
 
 export const KIND_LABELS: Record<TaskKind, string> = {
   caption: 'Descriptions',
-  embedding: 'Image search index',
+  embedding: 'Image index',
   enrichment: 'n8n enrichment',
-  text_embedding: 'Description search index',
+  text_embedding: 'Text index',
 };
 
 /** Why a kind is not making progress, in words for the UI; null when it is working normally. */

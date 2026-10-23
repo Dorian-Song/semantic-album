@@ -25,7 +25,6 @@ export function ExportDialog({ scope, label, onClose }: { scope: { albumIds: str
           <code>metadata.json</code> and <code>metadata.csv</code> with descriptions, tags, album names, and capture details where known.
         </li>
       </ul>
-      <p className="dialog-note">Search index data is not included. The file is kept for 24 hours.</p>
       {j && j.state !== 'completed' && j.state !== 'failed' && (
         <div role="status">
           <progress max={j.total || 1} value={j.done} aria-label="Export progress" />

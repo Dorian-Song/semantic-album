@@ -17,7 +17,7 @@ function TestButton({ provider, disabled }: { provider: 'deepseek' | 'openai'; d
       </button>
       <div role="status">
         {result === null ? (
-          <p className="muted small">{disabled ? 'Save a key first.' : 'Sends one small generated picture, not your photos.'}</p>
+          disabled && <p className="muted small">Save a key first.</p>
         ) : result.ok ? (
           <p className="test-ok small">
             <Icon name="checkCircle" size={16} /> Works ({result.model}): “{result.caption}”
@@ -37,8 +37,7 @@ function OutdatedDescriptions({ enabled }: { enabled: boolean }) {
   const refresh = useMutation({ mutationFn: refreshOutdatedDescriptions, onSuccess: () => void qc.invalidateQueries({ queryKey: ['processing'] }) });
   if (!enabled || !outdated.data) return null;
   return (
-    <Callout title={`${outdated.data.toLocaleString()} photo${outdated.data === 1 ? '' : 's'} can get a richer description`}>
-      <p>They have no description or one from an older version of the prompt. Updating sends them to DeepSeek again; your own descriptions are kept.</p>
+    <Callout title={`${outdated.data.toLocaleString()} photo${outdated.data === 1 ? '' : 's'} with an outdated description`}>
       <button type="button" className="btn btn-soft btn-small" disabled={refresh.isPending || refresh.isSuccess} onClick={() => refresh.mutate()}>
         {refresh.isSuccess ? `Queued ${refresh.data.queued.toLocaleString()}` : 'Update descriptions'}
       </button>
@@ -99,7 +98,7 @@ export function CaptionSettings({ settings }: { settings: Settings }) {
   );
 
   return (
-    <SettingsCard id="captions-heading" icon="cloud" title="Photo Description Provider" subtitle="A cloud vision model writes a description and tags for each photo." status={status}>
+    <SettingsCard id="captions-heading" icon="cloud" title="Photo Descriptions" status={status}>
       <form
         className="stack"
         onSubmit={(e) => {
@@ -107,23 +106,24 @@ export function CaptionSettings({ settings }: { settings: Settings }) {
           submit();
         }}
       >
-        <Callout tone="warn">
-          <p>
-            When this is on, each imported photo is sent to <strong>DeepSeek</strong>. With the fallback on, a photo goes to <strong>OpenAI</strong> only when DeepSeek
-            cannot describe it. Your originals stay on this computer.
-          </p>
-        </Callout>
-        <label className="switch">
-          <input type="checkbox" role="switch" checked={draft.captionsEnabled} onChange={(e) => set('captionsEnabled', e.target.checked)} />
-          <span className="switch-track" aria-hidden="true" />
-          Generate descriptions for my photos
-        </label>
+        <div className="caption-top">
+          <label className="switch">
+            <input type="checkbox" role="switch" checked={draft.captionsEnabled} onChange={(e) => set('captionsEnabled', e.target.checked)} />
+            <span className="switch-track" aria-hidden="true" />
+            Generate descriptions for my photos
+          </label>
+          <label className="inline-field">
+            Photos at a time
+            <input className="input-narrow" type="number" min={1} max={1000} value={draft.concurrency} onChange={(e) => set('concurrency', Math.min(1000, Math.max(1, Number(e.target.value) || 1)))} />
+          </label>
+        </div>
         {draft.captionsEnabled && !dsKeyReady && <p className="form-hint">Add a DeepSeek API key below to start.</p>}
         <OutdatedDescriptions enabled={settings.captionsEnabled && settings.deepseek.apiKey.saved} />
 
+        <div className="provider-cols">
         <fieldset className="settings-group">
           <legend>DeepSeek (primary)</legend>
-          <FormRow label="API key" hint="From your DeepSeek account." htmlFor="ds-key">
+          <FormRow label="API key" htmlFor="ds-key">
             <SecretField
               id="ds-key"
               state={settings.deepseek.apiKey}
@@ -133,10 +133,10 @@ export function CaptionSettings({ settings }: { settings: Settings }) {
               busy={save.isPending}
             />
           </FormRow>
-          <FormRow label="Model" hint="Needs image input." htmlFor="ds-model">
+          <FormRow label="Model" htmlFor="ds-model">
             <input id="ds-model" value={draft.dsModel} onChange={(e) => set('dsModel', e.target.value)} spellCheck={false} />
           </FormRow>
-          <FormRow label="Base URL" hint="Usually unchanged." htmlFor="ds-url">
+          <FormRow label="Base URL" htmlFor="ds-url">
             <input id="ds-url" value={draft.dsBaseUrl} onChange={(e) => set('dsBaseUrl', e.target.value)} spellCheck={false} />
           </FormRow>
           <TestButton provider="deepseek" disabled={!settings.deepseek.apiKey.saved} />
@@ -147,7 +147,7 @@ export function CaptionSettings({ settings }: { settings: Settings }) {
           <label className="switch">
             <input type="checkbox" role="switch" checked={draft.oaEnabled} onChange={(e) => set('oaEnabled', e.target.checked)} />
             <span className="switch-track" aria-hidden="true" />
-            Use OpenAI when DeepSeek cannot describe a photo
+            Use when DeepSeek fails
           </label>
           {draft.oaEnabled && (
             <>
@@ -161,7 +161,7 @@ export function CaptionSettings({ settings }: { settings: Settings }) {
                   busy={save.isPending}
                 />
               </FormRow>
-              <FormRow label="Model" hint="A vision-capable model." htmlFor="oa-model">
+              <FormRow label="Model" htmlFor="oa-model">
                 <input id="oa-model" value={draft.oaModel} onChange={(e) => set('oaModel', e.target.value)} spellCheck={false} />
               </FormRow>
               <FormRow label="Base URL" htmlFor="oa-url">
@@ -172,10 +172,7 @@ export function CaptionSettings({ settings }: { settings: Settings }) {
             </>
           )}
         </fieldset>
-
-        <FormRow label="Photos described at a time" hint="Requests in flight to the provider (1–1000)." htmlFor="cap-conc">
-          <input id="cap-conc" className="input-narrow" type="number" min={1} max={1000} value={draft.concurrency} onChange={(e) => set('concurrency', Math.min(1000, Math.max(1, Number(e.target.value) || 1)))} />
-        </FormRow>
+        </div>
 
         <FormError error={save.error} />
         <div className="form-actions">

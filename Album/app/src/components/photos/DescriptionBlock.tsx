@@ -95,7 +95,6 @@ export function DescriptionBlock({ photo, onEdit }: { photo: PhotoDetail; onEdit
           </button>
         )}
       </div>
-      {d?.manual && d.ai && <p className="muted small">An AI description also exists; your text is shown and searched instead.</p>}
     </>
   );
 }

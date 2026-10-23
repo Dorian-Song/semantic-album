@@ -36,7 +36,7 @@ export function N8nSettings({ settings, service }: { settings: Settings; service
   );
 
   return (
-    <SettingsCard id="n8n-heading" icon="workflow" title="n8n Enrichment" subtitle="A low-code workflow stores and returns each description." status={status}>
+    <SettingsCard id="n8n-heading" icon="workflow" title="n8n Enrichment" status={status}>
       <form
         className="stack"
         onSubmit={(e) => {
@@ -45,14 +45,10 @@ export function N8nSettings({ settings, service }: { settings: Settings; service
           save.mutate({ n8n: { webhookUrl: url.trim() || null, ...(secret !== undefined ? { secret } : {}) }, enrichmentConcurrency: concurrency });
         }}
       >
-        <p className="muted small">
-          Album sends description <strong>text and tags</strong>, never photos, to the “Album enrichment” workflow. It tidies them, adds broad categories, writes a
-          Data Table row, reads it back, and returns it. If n8n is down, search keeps working and enrichment catches up later.
-        </p>
-        <FormRow label="Webhook URL" hint="Filled in by automation/n8n/deploy.mjs." htmlFor="n8n-url">
+        <FormRow label="Webhook URL" htmlFor="n8n-url">
           <input id="n8n-url" value={url} onChange={(e) => (setSaved(false), setUrl(e.target.value))} placeholder="http://localhost:5678/webhook/album-enrichment" spellCheck={false} />
         </FormRow>
-        <FormRow label="Webhook secret" hint="Sent as the X-Album-Secret header." htmlFor="n8n-secret">
+        <FormRow label="Secret" htmlFor="n8n-secret">
           <SecretField
             id="n8n-secret"
             state={settings.n8n.secret}
@@ -62,7 +58,7 @@ export function N8nSettings({ settings, service }: { settings: Settings; service
             busy={save.isPending}
           />
         </FormRow>
-        <FormRow label="Requests at a time" hint="1–64." htmlFor="n8n-conc">
+        <FormRow label="Requests at a time" htmlFor="n8n-conc">
           <input
             id="n8n-conc"
             className="input-narrow"
@@ -78,11 +74,9 @@ export function N8nSettings({ settings, service }: { settings: Settings; service
             <Icon name="refresh" size={16} /> {test.isPending ? 'Testing…' : 'Test connection'}
           </button>
           <div role="status">
-            {result === null ? (
-              <p className="muted small">Writes, reads back, and removes one sample row.</p>
-            ) : result.ok ? (
+            {result === null ? null : result.ok ? (
               <p className="test-ok small">
-                <Icon name="checkCircle" size={16} /> Data Table row {result.rowId} written, read back, and removed.
+                <Icon name="checkCircle" size={16} /> Row {result.rowId} written, read back, removed.
               </p>
             ) : (
               <p className="form-error small">{result.message}</p>

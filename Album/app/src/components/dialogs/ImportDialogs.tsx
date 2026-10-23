@@ -160,10 +160,6 @@ export function ImportFolderDialog({ onClose }: { onClose: () => void }) {
             <span>Folder path</span>
             <input autoFocus required placeholder="/home/you/Pictures/Holiday" value={path} onChange={(e) => setPath(e.target.value)} spellCheck={false} />
           </label>
-          <p className="muted small">
-            A folder on the computer running Album, including subfolders. Photos are copied into Album’s own library, so the folder can be moved or deleted
-            afterwards.
-          </p>
         </div>
         {mode === 'new' && debounced && suggestion.data && suggestion.data !== debounced && (
           <Callout title={`An album named “${debounced}” already exists.`}>

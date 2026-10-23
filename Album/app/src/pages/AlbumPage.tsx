@@ -103,6 +103,7 @@ export function AlbumPage() {
       </div>
 
       <header className="album-header">
+        {a.coverPhotoId && <img className="album-header-ambient" src={thumbnailUrl(a.coverPhotoId)} alt="" aria-hidden="true" />}
         <div className="album-header-cover">
           {a.coverPhotoId ? <img src={thumbnailUrl(a.coverPhotoId)} alt="" /> : <Icon name="image" size={36} />}
         </div>

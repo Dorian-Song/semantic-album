@@ -14,7 +14,7 @@ export function AlbumCard({ album }: { album: Album }) {
   };
   return (
     <li className="album-card">
-      <Link to={`/albums/${album.id}`} className="album-cover" aria-label={`${album.name}, ${album.photoCount} photos`}>
+      <Link to={`/albums/${album.id}`} className="album-cover">
         {album.coverPhotoId ? (
           <img src={thumbnailUrl(album.coverPhotoId)} alt="" loading="lazy" />
         ) : (
@@ -22,16 +22,14 @@ export function AlbumCard({ album }: { album: Album }) {
             <Icon name="image" size={30} />
           </span>
         )}
-      </Link>
-      <div className="album-meta">
-        <div>
-          <Link to={`/albums/${album.id}`} className="album-name">
-            {album.name}
-          </Link>
-          <p className="muted">
+        <span className="album-meta">
+          <span className="album-name">{album.name}</span>
+          <span className="album-count-label">
             {album.photoCount.toLocaleString()} photo{album.photoCount === 1 ? '' : 's'}
-          </p>
-        </div>
+          </span>
+        </span>
+      </Link>
+      <div className="album-menu">
         <details className="menu" ref={menu}>
           <summary aria-label={`Actions for ${album.name}`}>
             <Icon name="more" />

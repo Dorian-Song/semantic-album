@@ -193,14 +193,12 @@ export function SearchResultsPage() {
       {first && (
         <div className="results-head" aria-live="polite">
           <div>
-            <h2>
-              {first.total.toLocaleString()} photo{first.total === 1 ? '' : 's'} found
-            </h2>
+            {/* Meaning ranks every photo, so a total would always be the whole library. */}
+            <h2>{first.meaning === 'ok' ? 'Best matches' : `${first.total.toLocaleString()} photo${first.total === 1 ? '' : 's'} found`}</h2>
             <p className="muted">
               {selectedAlbums.length ? `from ${names(selectedAlbums.map((a) => a.name))}` : 'from all albums'} · {Math.round(first.timingsMs.total)} ms
             </p>
           </div>
-          {first.meaning === 'ok' && first.total > 0 && <p className="muted small results-note">Best matches first; photos further down match less well.</p>}
         </div>
       )}
       {first?.fallbackToWords && (
