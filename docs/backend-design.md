@@ -222,7 +222,7 @@ Implementation notes (build step 4):
 
 ### n8n enrichment workflow
 
-For the course's LCNC database-connectivity requirement, the n8n workflow is real application behavior:
+The n8n workflow is real application behavior, not a demonstration stub:
 
 ```text
 caption succeeded -> enrichment task: backend POSTs {assetId, taskId, revision, caption, tags}
@@ -245,7 +245,7 @@ n8n runs as the open-source Community edition, self-hosted rather than on n8n Cl
 
 The backend never depends on local-only n8n details. Keep the exported workflow JSON and a Compose file in `automation/n8n/`.
 
-**Assessor access.** Community edition does not support sharing workflows between users: only the owner and the workflow's creator can see a workflow. Create a member account for the assessor and build (or import) the workflow and Data Table while logged in as that account, so it is the creator. The owner account keeps full access. If that proves awkward on the installed version, run a dedicated instance containing only this project and give the assessor its login. Either way, the n8n instance holds no photo files and no provider API keys; its only secret is the webhook header credential.
+**Shared access.** Community edition does not support sharing workflows between users: only the owner and the workflow's creator can see a workflow. To let someone else inspect it, create a member account for them and build (or import) the workflow and Data Table while logged in as that account, so it is the creator. The owner account keeps full access. If that proves awkward on the installed version, run a dedicated instance containing only this project. Either way, the n8n instance holds no photo files and no provider API keys; its only secret is the webhook header credential.
 
 ## REST surface
 

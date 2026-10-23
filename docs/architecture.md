@@ -8,7 +8,7 @@ The application has four tiers, deployed on two nodes.
 
 | Tier | Contents | Node |
 | --- | --- | --- |
-| 1. Presentation | React web app (`apps/web`) | Local |
+| 1. Presentation | React web app (`Album/app`) | Local |
 | 2. Application logic | `infra/` capabilities and `application/` business modules | Local |
 | 3. Data access | `data-access/`: SQLite, disk files, external services (including n8n workflows) | Local, calling out to the cloud |
 | 4. Database | SQLite file, photo directory (local); Baserow tables (cloud, text only) | Local + cloud |
@@ -28,7 +28,7 @@ Tiers and nodes are different things. All four tiers of Album run on the user's 
 ## Module structure
 
 ```text
-apps/api/src/
+Album/src/
 ├─ bootstrap/          wiring, start-up order, shutdown order (outside the four tiers)
 ├─ shared/             error base types, IDs, time — nothing with business meaning
 ├─ infra/
@@ -142,7 +142,7 @@ The SQLite schema and its version upgrades, run by `bootstrap` at start-up. The 
 | Baserow tables | Database | Normalised description records, place-name cache, statistics snapshots — text only, with public read-only views |
 | Penpot | None (design time) | UI design and prototypes |
 
-Workflow definitions and table structures are kept in the repository. n8n never receives photos: its execution history is visible to the assessor, and images there would expose users' photos.
+Workflow definitions and table structures are kept in the repository. n8n never receives photos: its execution history is visible to anyone with access to the workflow, and images there would expose users' photos.
 
 ## Main flows
 

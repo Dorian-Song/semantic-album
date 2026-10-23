@@ -1,82 +1,97 @@
-# Semantic Album — a local-first AI photo library
+# Semantic Album
 
-Album is a self-hosted web application for organizing and finding personal photos. It imports images from selected files or a folder on the host machine, keeps its own copies, and lets one photo appear in several albums without storing duplicate bytes. Users can browse albums, edit AI-written descriptions, and search by words or visual meaning. The app is designed as a two-person course project and a usable open-source prototype, not a multi-user photo service.
+A local-first photo library that understands what is in your photos. It keeps your library on your own computer, writes a description and tags for every photo, and lets you find photos by the words in those descriptions or by what the photo shows.
 
-The interface and project materials are in English. The current visual concepts are in [design/ui-concepts](design/ui-concepts/README.md); they are references, not final Figma files or implemented screens.
+![Home screen](docs/images/home.jpg)
 
-## What the application must do
+## What it does
 
-- Create, rename, and delete albums. Import selected image files into an existing album, or import a host folder into a new album named after that folder. Resolve name collisions with a suffix such as `Holiday (2)`.
-- Accept common camera and web formats — JPEG, PNG, WebP, GIF, BMP, TIFF, HEIC/HEIF, and AVIF — identified by file content rather than extension. Keep the original bytes unchanged and generate browser-friendly derivatives. A file that cannot be decoded is recorded as an unsupported item and does not stop the batch.
-- Keep imported originals, derivatives, and thumbnails in app-owned local storage. Removing the source folder must not remove imported photos.
-- Identify identical image bytes by SHA-256. Skip a second copy inside the same album; allow the same stored photo to belong to different albums.
-- Remove a photo from one album, move it between albums, or delete it from the library. Deleting the last album reference makes the file eligible for delayed cleanup, and cleanup also removes derived captions, tags, embeddings, and the photo's n8n enrichment row.
-- Generate a caption and tags with DeepSeek's vision model. Use OpenAI only as a fallback when DeepSeek cannot process a photo. Let the user edit the caption without a later AI run silently replacing that edit.
-- Generate image and query embeddings locally with Qwen3-VL-Embedding-2B (2048 dimensions). Offer **Words**, **Meaning**, and **Both** search across the current album, selected albums, or all albums. Show a shared photo once in results and list every album it belongs to.
-- Read capture time, camera, and GPS position from EXIF when a file has them. These fields are optional: never invent or estimate a value, and omit an absent field in the UI. Search can be narrowed by capture date and camera; photos without that field do not match an active filter.
-- Export an album or a selection as a ZIP file containing the original photos plus their descriptions, tags, and album names as JSON/CSV and XMP sidecar files.
-- Show durable import progress and separate caption/embedding progress. Resume unfinished batches after an app restart; individual file transfers do not need resumable upload. The design target is a 10,000-photo import with no manual intervention, using bounded parallel workers.
-- Include a genuine, visible low-code workflow: a self-hosted n8n instance receives caption text, normalizes it, writes an enrichment record to an n8n Data Table, reads that record, and returns it to the backend. The local SQLite database remains the application's source of truth.
+- **Imports** selected files or a whole folder. A folder becomes an album named after it. The app keeps its own copy of each photo, so the source folder can be moved or deleted afterwards.
+- **Stores each photo once.** Identical bytes are recognised by SHA-256; one stored photo can belong to several albums.
+- **Reads common formats** (JPEG, PNG, WebP, GIF, BMP, TIFF, HEIC/HEIF, AVIF), identified by content rather than file extension. A file that cannot be decoded is reported and does not stop the import.
+- **Describes every photo.** A cloud vision model (DeepSeek, with OpenAI as fallback) writes a description, tags and a list of visible objects. You can edit the text; a later AI run never replaces your edit.
+- **Searches** by **Words** (full-text index), **Meaning** (image and text vectors from a local multimodal model), or **Both**, across one album, several, or all of them.
+- **Exports** an album or a selection as a ZIP with the original photos, JSON and CSV metadata, and an XMP sidecar per photo.
+- **Keeps working through restarts.** Imports and background processing resume where they stopped, with live progress and throughput for each stage.
+- **Says where data goes.** The settings page lists, for the current configuration, which service receives what.
 
-## Architecture in one view
+![Searching for "golden retriever puppy"](docs/images/search.jpg)
+
+## How it works
 
 ```text
 Browser (React + TypeScript)
-           │ REST/JSON + multipart (+ NDJSON stream for progressive search)
-           ▼
-Local TypeScript API ── SQLite (albums, references, jobs, search metadata)
-           │          └─ app-owned originals / derivatives / thumbnails
-           ├── local vLLM process: Qwen3-VL-Embedding-2B
-           ├── image tools: sharp/libvips; heif-dec, ffmpeg or ImageMagick for HEIC/AVIF
-           ├── cloud vision API: DeepSeek Responses (primary), OpenAI Responses (fallback)
-           └── n8n webhook (self-hosted open-source n8n): text enrichment + Data Table write/read
+   │  REST/JSON and multipart uploads
+   ▼
+Local API (Node + Fastify) ── SQLite (albums, photos, descriptions, tasks, search index)
+   │                       └─ app-owned originals, display copies, thumbnails
+   ├── vLLM on the local GPU: Qwen3-VL-Embedding-2B (2048-dim vectors)
+   ├── cloud vision: DeepSeek (primary), OpenAI (fallback)        ← photo
+   ├── n8n workflow in Docker: tidy text, write/read a Data Table  ← text only
+   └── Baserow in Docker: text copy of albums, photos and tags    ← text only
 ```
 
-The backend, database, and photo files run on the user's machine. n8n is the open-source Community edition, self-hosted on the team's own cloud server with a public HTTPS address so the course assessor can log in and inspect the workspace. During development it runs as a separate local process configured exactly like the server deployment, so migration only changes the webhook URL. The photo-caption API receives image content, and n8n receives caption text; the application must say this clearly when these services are configured. n8n does not receive or own the original photo library.
+The SQLite database and the photo files are the source of truth. n8n and Baserow are optional, self-hosted, and only ever receive text; if they are down, the app keeps working and catches up later. Without the GPU model, Meaning and Both searches fall back to Words.
 
-## Build guidance
+The module structure of the backend is described in [docs/architecture.md](docs/architecture.md).
 
-- [Backend design](docs/backend-design.md): modules, storage model, image formats, API, state machines, recovery, search, export, and n8n boundary.
-- [Frontend structure](docs/frontend-structure.md): pages, reusable components, routes, and proposed file tree.
-- [Implementation handoff](docs/implementation-handoff.md): build order and testable acceptance scenarios for another development model.
-- [Decision log](docs/decision-log.md): where and why this design differs from the original team-formation plan, including the low-code/code boundary.
-- [Code review notes](docs/code-review-2026-09-26.md): known correctness issues to address after the initial prototype.
-- [Lab 2 Version 2 plan](docs/lab-2-v2-plan.md): AI-assisted Figma prototype, coded responsive/accessibility changes, and submission evidence.
+## Privacy
 
-## Repository layout
+- Original photos, copies, thumbnails, the database and the search index stay on your computer.
+- With descriptions turned on, each photo is sent once to DeepSeek; OpenAI receives a photo only when DeepSeek cannot describe it.
+- n8n and Baserow receive description text and tags, never photos.
+- There is no account, analytics, or cloud photo storage.
 
-The current application (Version 3 onward) is in `Album/`: `Album/src/` is the backend, `Album/app/` the web app, and `Album/api/` the Postman collection for the REST API. Start it with `Album/start.sh`. The self-hosted low-code services are in `n8n/` and `baserow/`; `docs/architecture.md` describes the current module structure. `apps/` and `automation/` hold the Version 2 prototype, kept for history; the setup steps below still describe that prototype.
+## Running it
 
-The implementation uses a TypeScript frontend/backend with SQLite, FTS5, float32 vectors stored in SQLite and scanned in memory, a managed local vLLM process, and provider-specific Responses adapters. Dependency versions and GPU memory use must be verified on each target machine. The development machine has an 8 GB RTX 4060 desktop GPU, so the embedding service must fit in that budget.
+Requirements: Node.js 22.12+, pnpm 10, and Docker for n8n and Baserow. HEIC and BMP need `heif-dec` (libheif), `ffmpeg`, or ImageMagick. Meaning search needs an NVIDIA GPU with 8 GB or more.
 
-## Running locally
+```bash
+cd Album
+cp .env.example .env      # then add your DeepSeek (and optionally OpenAI) API key
+./start.sh                # installs dependencies on first run; starts vLLM, the API and the web app
+./stop.sh
+```
 
-Requirements: Node.js 22.12+, pnpm 10, Docker (for the local n8n instance), and a C++ toolchain in case `better-sqlite3` has no prebuilt binary for your Node version. HEIC and BMP need `libheif` tools (`heif-dec`), `ffmpeg`, or ImageMagick. Meaning search needs an NVIDIA GPU (8 GB is enough) with a recent driver.
+- App: <http://127.0.0.1:5173>
+- API health: <http://127.0.0.1:3200/api/health>
 
-One-time setup for Meaning search (about 12 GB of downloads):
+**Meaning search (optional).** Install vLLM into `.venv` at the repository root and download the model into `models/Qwen3-VL-Embedding-2B` (about 12 GB in total):
 
 ```bash
 uv venv .venv --python 3.12
 uv pip install --python .venv/bin/python vllm==0.30.0
-# Qwen3-VL-Embedding-2B into models/Qwen3-VL-Embedding-2B, with the pinned commit in models/Qwen3-VL-Embedding-2B/REVISION
 ```
 
-Then set `VLLM_ENABLED=true` in `.env`. Without it, Album works normally and Meaning/Both searches fall back to Words, with a notice.
+Set `VLLM_ENABLED=false` in `Album/.env` to run without it.
 
-```bash
-./start.sh     # installs dependencies on first run, then starts API, web, and local n8n
-./stop.sh      # stops them again
-pnpm typecheck
-pnpm test
-```
+**n8n and Baserow (optional).** See [n8n/README.md](n8n/README.md) and [baserow/README.md](baserow/README.md). In short: run `docker compose up -d` in `n8n/`, create an API key, and `node n8n/deploy.mjs` deploys the workflow and connects it to the app; run `docker compose up -d --build` in `baserow/`, then put the table ids and a database token in `Album/.env`.
 
-- App: <http://localhost:5173>
-- API health: <http://localhost:3200/api/health>
-- n8n editor: <http://localhost:5678> (setup and `deploy.mjs` in [automation/n8n](automation/n8n/README.md))
-- Search benchmark on COCO: `node scripts/search-benchmark.mjs` after importing `datasets/coco/val2017`
+**API.** Every `/api` request except `/api/health` needs the `X-API-Key` header when `ALBUM_API_KEY` is set; the web app's dev proxy adds it. A Postman collection is in [Album/api](Album/api/README.md).
 
-Settings live in `.env` (copied from `.env.example`). Logs and PID files are in `.run/`; the photo library is in `data/`.
+## Repository layout
 
-## Course demonstration
+| Path | Contents |
+| --- | --- |
+| `Album/src/` | Backend: ingress, application modules, infrastructure capabilities, data access, SQLite migrations |
+| `Album/app/` | Web app |
+| `Album/api/` | Postman collection and environment |
+| `n8n/`, `baserow/` | Self-hosted low-code services (Docker) |
+| `docs/` | Architecture, design notes and the decision log |
+| `design/` | UI concept images |
+| `apps/`, `automation/` | The earlier prototype, kept for history |
 
-The prototype should demonstrate the problem, working browser/API/database separation, an external API, a low-code workspace with a real Data Table write and read, and privacy/accessibility choices. The course submission also needs a recorded group presentation, slide deck, individual reflections, and links to the version-control record and LCNC workspace. The team has two members.
+## Status
+
+Working today: everything listed under *What it does*. Planned next:
+
+- Search by example photo.
+- Very tall or wide images, such as scrolling phone screenshots, cut into overlapping pieces before they are described.
+- A retry with DeepSeek before falling back to OpenAI.
+- A full accessibility pass: keyboard use, screen-reader labels, colour contrast.
+
+Photos in the screenshots are from [Unsplash](https://unsplash.com).
+
+## Team
+
+Saturn (backend) and Dorian Song (frontend), with AI-assisted coding from Claude.

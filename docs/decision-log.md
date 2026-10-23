@@ -1,6 +1,6 @@
 # Decision log
 
-This log records where the design differs from the *Team Formation and Role Assignment* document (13 September 2026) and why. Add new entries at the end with a date.
+This log records where the design differs from the original project plan (13 September 2026) and why. Add new entries at the end with a date.
 
 ## 2026-09-26 — Capture metadata is optional, and filters respect that
 
@@ -30,13 +30,13 @@ This log records where the design differs from the *Team Formation and Role Assi
 **Why:**
 - The photo library, SQLite database, and GPU must stay on the user's machine; there is not enough server disk to hold libraries centrally. A cloud n8n instance cannot reach files, SQLite, or the local vLLM process behind the user's NAT without exposing the user's machine to the internet.
 - Crash recovery for imports depends on atomic SQLite updates alongside file operations. Splitting that state between a remote workflow engine and a local database would create exactly the distributed-consistency problem the design avoids.
-- If n8n orchestrated captioning, it would handle photo bytes, and the assessor-visible execution history would contain users' images. Keeping n8n text-only gives a cleaner privacy boundary.
+- If n8n orchestrated captioning, it would handle photo bytes, and its visible execution history would contain users' images. Keeping n8n text-only gives a cleaner privacy boundary.
 - The low-code part is still load-bearing: enrichment results reach the local index only through the workflow's Data Table write and read, and retries are idempotent because of the upsert key.
 
 ## 2026-09-26 — Self-hosted open-source n8n instead of n8n Cloud
 
 **Decision:** run the Community edition on the team's own cloud server with a public HTTPS address, instead of paying for four months of n8n Cloud. Develop against a local Docker instance with the same configuration, and migrate by changing only the backend's webhook URL and secret.
-**Consequences:** Community edition cannot share workflows between users, so the workflow and Data Table are created under the assessor's member account (or on a dedicated instance). Data Tables are available and limited to 200 MiB by default, which is ample for text rows.
+**Consequences:** Community edition cannot share workflows between users, so the workflow and Data Table are created under the member account that should see them (or on a dedicated instance). Data Tables are available and limited to 200 MiB by default, which is ample for text rows.
 
 ## 2026-09-26 — Model choices
 

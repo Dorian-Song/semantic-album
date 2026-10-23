@@ -1,6 +1,6 @@
 # Demonstration script
 
-A recorded end-to-end path for the course presentation, about 8–10 minutes. It follows the path in the [implementation handoff](implementation-handoff.md): import → album → caption and n8n Data Table write/read → Words and Meaning search → detail → edit or move → export, then the privacy boundary.
+A recorded end-to-end demo path, about 8–10 minutes. It follows the path in the [implementation handoff](implementation-handoff.md): import → album → caption and n8n Data Table write/read → Words and Meaning search → detail → edit or move → export, then the privacy boundary.
 
 ## Before recording
 

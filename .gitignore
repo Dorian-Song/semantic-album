@@ -10,5 +10,5 @@ models/
 datasets/
 .venv/
 data-demo/
-# Course reports and screenshots contain Unsplash demo photos, which may not be redistributed.
+# Reports and screenshots with the Unsplash demo photos; the dataset may not be redistributed.
 coursework/

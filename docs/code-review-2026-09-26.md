@@ -2,9 +2,9 @@
 
 This records findings from a read-only review of the implemented prototype. No application behavior is changed by this note. On the review date, `pnpm typecheck`, `pnpm test` (55 API tests), and `pnpm --filter @album/web build` passed. The frontend test script currently reports that no web tests exist. GPU measurements were not rerun in this environment because `nvidia-smi` could not communicate with a driver.
 
-The development GPU is **RTX 4060 desktop, 8 GB**. Previous references to “RTX 4060 Laptop” were a hardware-label mistake; documentation and the startup-script comment have been corrected. Memory limits and throughput should be measured again on the actual machine before quoting them in course work.
+The development GPU is **RTX 4060 desktop, 8 GB**. Previous references to “RTX 4060 Laptop” were a hardware-label mistake; documentation and the startup-script comment have been corrected. Memory limits and throughput should be measured again on the actual machine before quoting them.
 
-## Findings to address before Version 2 is submitted
+## Findings to address in Version 2
 
 | Priority | Finding and user-visible effect | Evidence | Suggested correction and check |
 | --- | --- | --- | --- |
@@ -13,5 +13,5 @@ The development GPU is **RTX 4060 desktop, 8 GB**. Previous references to “RTX
 | Medium | Removing the last album reference does not cancel queued caption tasks. During the 24-hour grace period, a pending task can still read and send that photo to the cloud provider; an already-running request cannot be recalled. | `apps/api/src/albums/album-service.ts` (`deleteFromLibrary`/`markOrphans`); `apps/api/src/processing/task-service.ts` (`claim`); `apps/api/src/processing/caption-worker.ts` (`loadImage`) | Do not claim new work for orphaned assets and recheck membership immediately before sending the image. Mark skipped/canceled tasks consistently. Test deletion while caption work is queued and assert the provider receives no request for the removed photo. |
 | Low | The five-minute processing rate can stay nonzero indefinitely after work stops. Old samples are pruned only when a new task finishes, while the idle UI displays `perSecond5m`. | `apps/api/src/processing/task-service.ts` (`recordFinish`, `throughput`); `apps/web/src/components/settings/ProcessingCards.tsx` | Prune samples when reading throughput, or count only timestamps within the current five-minute window. Use a fake clock to verify the rate reaches zero after inactivity. |
 
-These are review findings, not claims that the current 55 tests fail. Keep the fixes separate from the Lab 2 UI changes when possible so the before/after design evidence remains clear.
+These are review findings, not claims that the current 55 tests fail. Keep the fixes separate from UI changes when possible.
 
