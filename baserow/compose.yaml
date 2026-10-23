@@ -1,5 +1,5 @@
 # Self-hosted Baserow (open-source edition), local only. Holds a text-only copy of
-# albums, photo descriptions and tags for the Lab 4 database integration.
+# albums, photo descriptions and tags.
 name: album-baserow
 
 services:

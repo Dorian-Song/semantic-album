@@ -16,8 +16,8 @@ The enrichment workflow runs on open-source n8n. The same `compose.yaml` is used
 Community edition cannot share workflows between users. Only the owner and the user who created a workflow can see it. So:
 
 1. Create the owner account (the team's admin login).
-2. In **Settings → Users**, invite a member account for the assessor. Without SMTP configured, n8n shows an invite link to copy.
-3. Log in as that member and create the enrichment workflow and its Data Table there, so the assessor account owns them.
+2. In **Settings → Users**, invite a member account for whoever should see the workflow. Without SMTP configured, n8n shows an invite link to copy.
+3. Log in as that member and create the enrichment workflow and its Data Table there, so that account owns them.
 
 ## Server stage
 
@@ -31,7 +31,7 @@ Community edition cannot share workflows between users. Only the owner and the u
    }
    ```
 
-4. `docker compose up -d`, create the owner account, then the assessor's member account (see **Accounts**), and create an API key while logged in as the assessor.
+4. `docker compose up -d`, create the owner account, then the member account (see **Accounts**), and create an API key while logged in as that member.
 5. In the root `.env` of the machine running Album, set `N8N_MODE=remote`, `N8N_BASE_URL=https://n8n.example.com`, and `N8N_API_KEY` to that key, then run `node automation/n8n/deploy.mjs`. It creates the table, credential, and workflow on the server and switches Album's webhook URL and secret. Nothing else in the backend changes.
 
 ## Deploying the workflow
@@ -48,7 +48,7 @@ It uses `N8N_BASE_URL` and `N8N_API_KEY` from the root `.env` (create the key in
 4. Saves the webhook URL and secret in Album's settings, so the backend starts sending captions.
 5. Runs a smoke test that writes a row, reads it back, and deletes it again.
 
-Running it again is safe. It rotates the secret and redeploys the current workflow definition. For a server whose public address differs from the address used to reach its API, set `N8N_WEBHOOK_BASE` (for example `https://n8n.example.com`). The API key belongs to whoever created it, so the workflow is owned by that account. On the server, use a key from the assessor's member account (see **Accounts** above).
+Running it again is safe. It rotates the secret and redeploys the current workflow definition. For a server whose public address differs from the address used to reach its API, set `N8N_WEBHOOK_BASE` (for example `https://n8n.example.com`). The API key belongs to whoever created it, so the workflow is owned by that account. On the server, use a key from the member account (see **Accounts** above).
 
 ### What the workflow does
 

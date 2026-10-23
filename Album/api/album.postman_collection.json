@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Album V5 REST API",
-    "description": "Album (ITC6250) Version 5. Every /api request except /api/health needs the X-API-Key header; set apiKey in the environment.",
+    "name": "Album REST API",
+    "description": "Album REST API. Every /api request except /api/health needs the X-API-Key header; set apiKey in the environment.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -212,7 +212,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Lab 5 test {{$timestamp}}\"\n}"
+              "raw": "{\n  \"name\": \"API test {{$timestamp}}\"\n}"
             }
           }
         },
@@ -255,7 +255,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"name changed\", () => pm.expect(pm.response.json().name).to.match(/^Lab 5 renamed/));"
+                  "pm.test(\"name changed\", () => pm.expect(pm.response.json().name).to.match(/^API renamed/));"
                 ]
               }
             }
@@ -281,7 +281,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Lab 5 renamed {{$timestamp}}\"\n}"
+              "raw": "{\n  \"name\": \"API renamed {{$timestamp}}\"\n}"
             }
           }
         },
@@ -397,8 +397,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "const t = Date.now();",
-                  "pm.collectionVariables.set(\"idemKey\", \"lab5-\" + t);",
-                  "pm.collectionVariables.set(\"idemName\", \"Lab 5 idempotent \" + t);"
+                  "pm.collectionVariables.set(\"idemKey\", \"api-\" + t);",
+                  "pm.collectionVariables.set(\"idemName\", \"API idempotent \" + t);"
                 ]
               }
             },
@@ -603,7 +603,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"manual description wins over the AI one\", () => pm.expect(pm.response.json().description.effective).to.eql(\"Edited during Lab 5 API testing\"));"
+                  "pm.test(\"manual description wins over the AI one\", () => pm.expect(pm.response.json().description.effective).to.eql(\"Edited during API testing\"));"
                 ]
               }
             }
@@ -630,7 +630,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"manualCaption\": \"Edited during Lab 5 API testing\"\n}"
+              "raw": "{\n  \"manualCaption\": \"Edited during API testing\"\n}"
             }
           }
         },
