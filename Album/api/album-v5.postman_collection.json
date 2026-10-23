@@ -1,0 +1,1037 @@
+{
+  "info": {
+    "name": "Album V5 REST API",
+    "description": "Album (ITC6250) Version 5. Every /api request except /api/health needs the X-API-Key header; set apiKey in the environment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "X-API-Key"
+      },
+      {
+        "key": "value",
+        "value": "{{apiKey}}"
+      },
+      {
+        "key": "in",
+        "value": "header"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Authentication and monitoring",
+      "description": "API key check and the health endpoint used for monitoring.",
+      "item": [
+        {
+          "name": "Health check (no key needed)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"all services report ok\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.status).to.eql(\"ok\");",
+                  "  pm.expect(b.services).to.have.keys(\"database\", \"n8n\", \"embedding\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Reject request without API key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error code is unauthorized\", () => pm.expect(pm.response.json().error.code).to.eql(\"unauthorized\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Reject request with wrong API key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error code is unauthorized\", () => pm.expect(pm.response.json().error.code).to.eql(\"unauthorized\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ]
+            },
+            "auth": {
+              "type": "apikey",
+              "apikey": [
+                {
+                  "key": "key",
+                  "value": "X-API-Key"
+                },
+                {
+                  "key": "value",
+                  "value": "wrong-key"
+                },
+                {
+                  "key": "in",
+                  "value": "header"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Albums (full CRUD)",
+      "description": "Workflow: organise photos into albums.",
+      "item": [
+        {
+          "name": "List albums",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"returns an items array\", () => pm.expect(pm.response.json().items).to.be.an(\"array\").that.is.not.empty);",
+                  "pm.collectionVariables.set(\"libraryAlbumId\", pm.response.json().items[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create album",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const a = pm.response.json();",
+                  "pm.test(\"new album is empty\", () => pm.expect(a.photoCount).to.eql(0));",
+                  "pm.collectionVariables.set(\"albumId\", a.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lab 5 test {{$timestamp}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get album",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"is the album just created\", () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"albumId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rename album",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"name changed\", () => pm.expect(pm.response.json().name).to.match(/^Lab 5 renamed/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lab 5 renamed {{$timestamp}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create album with missing name (validation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error code is invalid_request\", () => pm.expect(pm.response.json().error.code).to.eql(\"invalid_request\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "Delete album",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get deleted album (not found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"error code is not_found\", () => pm.expect(pm.response.json().error.code).to.eql(\"not_found\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Safe retries (Idempotency-Key)",
+      "description": "A client that retries a POST after a timeout must not create the album twice.",
+      "item": [
+        {
+          "name": "Create album with Idempotency-Key",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const t = Date.now();",
+                  "pm.collectionVariables.set(\"idemKey\", \"lab5-\" + t);",
+                  "pm.collectionVariables.set(\"idemName\", \"Lab 5 idempotent \" + t);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"idemAlbumId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idemKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{idemName}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Repeat the same request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"first answer is replayed\", () => pm.expect(pm.response.headers.get(\"Idempotent-Replayed\")).to.eql(\"true\"));",
+                  "pm.test(\"no second album was created\", () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"idemAlbumId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idemKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{idemName}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Clean up",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{idemAlbumId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{idemAlbumId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Photos and search",
+      "description": "Workflows: browse a library, correct a description, find a photo by words or meaning.",
+      "item": [
+        {
+          "name": "List photos in an album (paged)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"at most 5 items, with a total\", () => { pm.expect(b.items.length).to.be.at.most(5); pm.expect(b.total).to.be.a(\"number\"); });",
+                  "pm.collectionVariables.set(\"photoId\", b.items[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{libraryAlbumId}}/photos?offset=0&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{libraryAlbumId}}",
+                "photos"
+              ],
+              "query": [
+                {
+                  "key": "offset",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get photo detail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().description;",
+                  "pm.test(\"has an AI description and tags\", () => pm.expect(d).to.include.keys(\"ai\", \"manual\", \"tags\"));",
+                  "pm.collectionVariables.set(\"previousManual\", JSON.stringify(d.manual));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/photos/{{photoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "photos",
+                "{{photoId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set manual description",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"manual description wins over the AI one\", () => pm.expect(pm.response.json().description.effective).to.eql(\"Edited during Lab 5 API testing\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/photos/{{photoId}}/description",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "photos",
+                "{{photoId}}",
+                "description"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"manualCaption\": \"Edited during Lab 5 API testing\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Restore previous description",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/photos/{{photoId}}/description",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "photos",
+                "{{photoId}}",
+                "description"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"manualCaption\": {{previousManual}}\n}"
+            }
+          }
+        },
+        {
+          "name": "Search by words and meaning",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"finds results\", () => pm.expect(r.items).to.be.an(\"array\").that.is.not.empty);",
+                  "pm.test(\"each result says how it matched\", () => r.items.forEach(i => pm.expect(i.matchedBy).to.be.an(\"array\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "search"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"bananas at a market stall\",\n  \"mode\": \"both\",\n  \"limit\": 5\n}"
+            }
+          }
+        },
+        {
+          "name": "Search with empty query (validation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error code is invalid_request\", () => pm.expect(pm.response.json().error.code).to.eql(\"invalid_request\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "search"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Search filters (facets)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/search/facets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "facets"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Settings and external integrations",
+      "description": "DeepSeek/OpenAI (descriptions), n8n (enrichment workflow), Baserow (text copy of the library).",
+      "item": [
+        {
+          "name": "Get settings (secrets masked)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test(\"API keys are never returned in full\", () => {",
+                  "  pm.expect(s.deepseek.apiKey).to.have.keys(\"saved\", \"last4\");",
+                  "  pm.expect(s.openai.apiKey).to.have.keys(\"saved\", \"last4\");",
+                  "});",
+                  "pm.collectionVariables.set(\"searchMode\", s.defaultSearchMode);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "settings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update a setting",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "settings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"defaultSearchMode\": \"{{searchMode}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update with unknown field (validation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error code is invalid_request\", () => pm.expect(pm.response.json().error.code).to.eql(\"invalid_request\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "settings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"theme\": \"dark\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DeepSeek: describe a test picture",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json();",
+                  "pm.test(\"DeepSeek returned a description and tags\", () => { pm.expect(c.ok).to.eql(true); pm.expect(c.caption).to.be.a(\"string\").that.is.not.empty; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/settings/test-caption",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "settings",
+                "test-caption"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"deepseek\"\n}"
+            }
+          }
+        },
+        {
+          "name": "n8n: workflow round trip",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"row written to the n8n Data Table, read back and cleaned up\", () => pm.expect(pm.response.json().ok).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/settings/test-n8n",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "settings",
+                "test-n8n"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Baserow: sync now",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"sync finished without error\", () => pm.expect(b.lastError).to.eql(null));",
+                  "pm.test(\"row counts read back from Baserow\", () => pm.expect(b.overview.photos).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/baserow/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "baserow",
+                "sync"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "albumId",
+      "value": ""
+    },
+    {
+      "key": "libraryAlbumId",
+      "value": ""
+    },
+    {
+      "key": "idemKey",
+      "value": ""
+    },
+    {
+      "key": "idemName",
+      "value": ""
+    },
+    {
+      "key": "idemAlbumId",
+      "value": ""
+    },
+    {
+      "key": "photoId",
+      "value": ""
+    },
+    {
+      "key": "previousManual",
+      "value": ""
+    },
+    {
+      "key": "searchMode",
+      "value": ""
+    }
+  ]
+}
