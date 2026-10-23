@@ -1,0 +1,22 @@
+# Self-hosted Baserow (open-source edition), local only. Holds a text-only copy of
+# albums, photo descriptions and tags for the Lab 4 database integration.
+name: album-baserow
+
+services:
+  baserow:
+    image: album-baserow:${BASEROW_VERSION:-2.4.0}-deepseek
+    build:
+      context: .
+      args:
+        BASEROW_VERSION: ${BASEROW_VERSION:-2.4.0}
+    container_name: album-baserow
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8085:80"
+    environment:
+      BASEROW_PUBLIC_URL: http://localhost:8085
+    volumes:
+      - baserow_data:/baserow/data
+
+volumes:
+  baserow_data:
