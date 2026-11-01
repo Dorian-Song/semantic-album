@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             xmlns:operaton="http://operaton.org/schema/1.0/bpmn"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             id="photo-review-definitions" targetNamespace="https://github.com/Dorian-Song/semantic-album">
+
+  <collaboration id="photo-review-collaboration">
+    <participant id="photo-review-pool" name="Shared album photo review" processRef="photo-review" />
+  </collaboration>
+
+  <process id="photo-review" name="Shared album photo review" isExecutable="true"
+           operaton:historyTimeToLive="30" operaton:candidateStarterGroups="contributors">
+    <documentation>A contributor submits a photo for a shared album. An AI privacy check reads the photo's text
+      description (never the image); low-risk photos are published automatically, the rest wait for an album admin.</documentation>
+
+    <laneSet id="lanes">
+      <lane id="lane-contributor" name="Contributor">
+        <flowNodeRef>submitted</flowNodeRef>
+        <flowNodeRef>revise</flowNodeRef>
+      </lane>
+      <lane id="lane-automation" name="Automation (worker + DeepSeek)">
+        <flowNodeRef>ai-review</flowNodeRef>
+        <flowNodeRef>risk-gateway</flowNodeRef>
+        <flowNodeRef>publish</flowNodeRef>
+        <flowNodeRef>published</flowNodeRef>
+      </lane>
+      <lane id="lane-admin" name="Album admin">
+        <flowNodeRef>review</flowNodeRef>
+        <flowNodeRef>decision-gateway</flowNodeRef>
+        <flowNodeRef>rejected</flowNodeRef>
+      </lane>
+    </laneSet>
+
+    <startEvent id="submitted" name="Photo submitted" operaton:initiator="submitter">
+      <extensionElements>
+        <operaton:formData>
+          <operaton:formField id="photoId" label="Photo ID (from the photo's page in Album)" type="string">
+            <operaton:validation><operaton:constraint name="required" /></operaton:validation>
+          </operaton:formField>
+          <operaton:formField id="albumName" label="Shared album" type="string">
+            <operaton:validation><operaton:constraint name="required" /></operaton:validation>
+          </operaton:formField>
+          <operaton:formField id="note" label="Note for the album admin" type="string" />
+        </operaton:formData>
+      </extensionElements>
+      <outgoing>to-ai-review</outgoing>
+    </startEvent>
+
+    <serviceTask id="ai-review" name="AI privacy review" operaton:type="external" operaton:topic="ai-review">
+      <documentation>Worker reads the photo's description, tags, objects and text from Album, asks DeepSeek for a
+        privacy risk (low / medium / high) with reasons, and sets aiRisk, aiReasons, photoDescription, photoLink.</documentation>
+      <incoming>to-ai-review</incoming>
+      <incoming>resubmitted</incoming>
+      <outgoing>to-risk-gateway</outgoing>
+    </serviceTask>
+
+    <exclusiveGateway id="risk-gateway" name="Privacy risk?">
+      <incoming>to-risk-gateway</incoming>
+      <outgoing>low-risk</outgoing>
+      <outgoing>needs-review</outgoing>
+    </exclusiveGateway>
+
+    <sequenceFlow id="to-ai-review" sourceRef="submitted" targetRef="ai-review" />
+    <sequenceFlow id="to-risk-gateway" sourceRef="ai-review" targetRef="risk-gateway" />
+    <sequenceFlow id="low-risk" name="Low: publish automatically" sourceRef="risk-gateway" targetRef="publish">
+      <conditionExpression xsi:type="tFormalExpression">${aiRisk == 'low'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="needs-review" name="Medium or high" sourceRef="risk-gateway" targetRef="review">
+      <conditionExpression xsi:type="tFormalExpression">${aiRisk != 'low'}</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="review" name="Review submission" operaton:candidateGroups="albumAdmins">
+      <documentation>Check the AI's privacy findings and the photo (open the link), then approve, ask for changes, or reject.</documentation>
+      <extensionElements>
+        <operaton:formData>
+          <operaton:formField id="photoLink" label="Photo" type="string">
+            <operaton:validation><operaton:constraint name="readonly" /></operaton:validation>
+          </operaton:formField>
+          <operaton:formField id="albumName" label="Shared album" type="string">
+            <operaton:validation><operaton:constraint name="readonly" /></operaton:validation>
+          </operaton:formField>
+          <operaton:formField id="note" label="Contributor's note" type="string">
+            <operaton:validation><operaton:constraint name="readonly" /></operaton:validation>
+          </operaton:formField>
+          <operaton:formField id="aiRisk" label="AI privacy risk" type="string">
+            <operaton:validation><operaton:constraint name="readonly" /></operaton:validation>
+          </operaton:formField>
+          <operaton:formField id="aiReasons" label="AI findings" type="string">
+            <operaton:validation><operaton:constraint name="readonly" /></operaton:validation>
+          </operaton:formField>
+          <operaton:formField id="finalCaption" label="Caption to publish" type="string" defaultValue="${photoDescription}" />
+          <operaton:formField id="decision" label="Decision" type="enum">
+            <operaton:value id="approve" name="Approve and publish" />
+            <operaton:value id="changes" name="Ask the contributor for changes" />
+            <operaton:value id="reject" name="Reject" />
+            <operaton:validation><operaton:constraint name="required" /></operaton:validation>
+          </operaton:formField>
+          <operaton:formField id="reviewComment" label="Comment to the contributor" type="string" />
+        </operaton:formData>
+        <operaton:taskListener event="complete">
+          <operaton:script scriptFormat="groovy">task.setVariable('reviewedBy', task.getAssignee())</operaton:script>
+        </operaton:taskListener>
+      </extensionElements>
+      <incoming>needs-review</incoming>
+      <outgoing>to-decision</outgoing>
+    </userTask>
+
+    <exclusiveGateway id="decision-gateway" name="Decision?">
+      <incoming>to-decision</incoming>
+      <outgoing>approved</outgoing>
+      <outgoing>changes-requested</outgoing>
+      <outgoing>reject</outgoing>
+    </exclusiveGateway>
+
+    <sequenceFlow id="to-decision" sourceRef="review" targetRef="decision-gateway" />
+    <sequenceFlow id="approved" name="Approve" sourceRef="decision-gateway" targetRef="publish">
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'approve'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="changes-requested" name="Changes" sourceRef="decision-gateway" targetRef="revise">
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'changes'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="reject" name="Reject" sourceRef="decision-gateway" targetRef="rejected">
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'reject'}</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="revise" name="Revise submission" operaton:assignee="${submitter}" operaton:candidateGroups="contributors">
+      <documentation>The album admin asked for changes. Pick another photo or explain in the note, then resubmit.</documentation>
+      <extensionElements>
+        <operaton:formData>
+          <operaton:formField id="reviewComment" label="Admin's comment" type="string">
+            <operaton:validation><operaton:constraint name="readonly" /></operaton:validation>
+          </operaton:formField>
+          <operaton:formField id="photoId" label="Photo ID" type="string">
+            <operaton:validation><operaton:constraint name="required" /></operaton:validation>
+          </operaton:formField>
+          <operaton:formField id="albumName" label="Shared album" type="string">
+            <operaton:validation><operaton:constraint name="required" /></operaton:validation>
+          </operaton:formField>
+          <operaton:formField id="note" label="Note for the album admin" type="string" />
+        </operaton:formData>
+      </extensionElements>
+      <incoming>changes-requested</incoming>
+      <outgoing>resubmitted</outgoing>
+    </userTask>
+
+    <sequenceFlow id="resubmitted" name="Resubmit" sourceRef="revise" targetRef="ai-review" />
+
+    <serviceTask id="publish" name="Publish to album" operaton:type="external" operaton:topic="publish">
+      <documentation>Worker adds the photo to the shared album in Album (creating the album if needed) and saves the
+        reviewed caption. Album's sync then copies the change to Baserow.</documentation>
+      <incoming>low-risk</incoming>
+      <incoming>approved</incoming>
+      <outgoing>to-published</outgoing>
+    </serviceTask>
+
+    <endEvent id="published" name="Published">
+      <incoming>to-published</incoming>
+    </endEvent>
+    <endEvent id="rejected" name="Rejected">
+      <incoming>reject</incoming>
+    </endEvent>
+    <sequenceFlow id="to-published" sourceRef="publish" targetRef="published" />
+  </process>
+
+  <bpmndi:BPMNDiagram id="diagram">
+    <bpmndi:BPMNPlane id="plane" bpmnElement="photo-review-collaboration">
+      <bpmndi:BPMNShape id="pool-di" bpmnElement="photo-review-pool" isHorizontal="true">
+        <omgdc:Bounds x="100" y="60" width="1180" height="480" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-contributor-di" bpmnElement="lane-contributor" isHorizontal="true">
+        <omgdc:Bounds x="130" y="60" width="1150" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-automation-di" bpmnElement="lane-automation" isHorizontal="true">
+        <omgdc:Bounds x="130" y="220" width="1150" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-admin-di" bpmnElement="lane-admin" isHorizontal="true">
+        <omgdc:Bounds x="130" y="380" width="1150" height="160" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="submitted-di" bpmnElement="submitted">
+        <omgdc:Bounds x="180" y="122" width="36" height="36" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="160" y="165" width="76" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="revise-di" bpmnElement="revise">
+        <omgdc:Bounds x="695" y="100" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ai-review-di" bpmnElement="ai-review">
+        <omgdc:Bounds x="270" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="risk-gateway-di" bpmnElement="risk-gateway" isMarkerVisible="true">
+        <omgdc:Bounds x="420" y="275" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="410" y="245" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="publish-di" bpmnElement="publish">
+        <omgdc:Bounds x="1050" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="published-di" bpmnElement="published">
+        <omgdc:Bounds x="1212" y="282" width="36" height="36" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1204" y="325" width="52" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="review-di" bpmnElement="review">
+        <omgdc:Bounds x="560" y="420" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="decision-gateway-di" bpmnElement="decision-gateway" isMarkerVisible="true">
+        <omgdc:Bounds x="720" y="435" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="660" y="413" width="56" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="rejected-di" bpmnElement="rejected">
+        <omgdc:Bounds x="727" y="494" width="36" height="36" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="770" y="505" width="48" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="to-ai-review-di" bpmnElement="to-ai-review">
+        <omgdi:waypoint x="198" y="158" /><omgdi:waypoint x="198" y="300" /><omgdi:waypoint x="270" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="to-risk-gateway-di" bpmnElement="to-risk-gateway">
+        <omgdi:waypoint x="370" y="300" /><omgdi:waypoint x="420" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="low-risk-di" bpmnElement="low-risk">
+        <omgdi:waypoint x="470" y="300" /><omgdi:waypoint x="1050" y="300" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="840" y="280" width="150" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="needs-review-di" bpmnElement="needs-review">
+        <omgdi:waypoint x="445" y="325" /><omgdi:waypoint x="445" y="460" /><omgdi:waypoint x="560" y="460" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="455" y="440" width="90" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="to-decision-di" bpmnElement="to-decision">
+        <omgdi:waypoint x="660" y="460" /><omgdi:waypoint x="720" y="460" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="approved-di" bpmnElement="approved">
+        <omgdi:waypoint x="770" y="460" /><omgdi:waypoint x="1100" y="460" /><omgdi:waypoint x="1100" y="340" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="900" y="440" width="50" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="changes-requested-di" bpmnElement="changes-requested">
+        <omgdi:waypoint x="745" y="435" /><omgdi:waypoint x="745" y="180" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="752" y="350" width="50" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="reject-di" bpmnElement="reject">
+        <omgdi:waypoint x="745" y="485" /><omgdi:waypoint x="745" y="494" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="resubmitted-di" bpmnElement="resubmitted">
+        <omgdi:waypoint x="695" y="140" /><omgdi:waypoint x="320" y="140" /><omgdi:waypoint x="320" y="260" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="480" y="120" width="60" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="to-published-di" bpmnElement="to-published">
+        <omgdi:waypoint x="1150" y="300" /><omgdi:waypoint x="1212" y="300" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

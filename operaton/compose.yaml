@@ -1,0 +1,30 @@
+# Self-hosted Operaton (open-source BPMN engine, Apache 2.0; fork of Camunda 7 CE), local only.
+# Runs Album's photo-review workflow. Web apps: Cockpit, Tasklist, Admin. REST API under /engine-rest.
+name: album-operaton
+
+services:
+  # A new named volume is owned by root; Operaton runs as uid 1000 and must be able to write its H2 database.
+  volume-init:
+    image: operaton/operaton:${OPERATON_VERSION:-2.2.0}
+    user: root
+    entrypoint: ["chown", "-R", "1000:1000", "/operaton/operaton-h2-default"]
+    volumes:
+      - operaton_data:/operaton/operaton-h2-default
+
+  operaton:
+    image: operaton/operaton:${OPERATON_VERSION:-2.2.0}
+    container_name: album-operaton
+    restart: unless-stopped
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+    environment:
+      # No demo invoice process; only the album workflow is deployed.
+      OPERATON_BPM_RUN_EXAMPLE_ENABLED: "false"
+    ports:
+      - "127.0.0.1:8090:8080"
+    volumes:
+      - operaton_data:/operaton/operaton-h2-default
+
+volumes:
+  operaton_data:
