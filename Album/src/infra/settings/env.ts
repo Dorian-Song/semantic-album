@@ -15,7 +15,7 @@ export interface Env {
   dataDir: string;
   n8nBaseUrl: string | null;
   /** Local Baserow holding a text-only copy of the library; null when BASEROW_URL or BASEROW_TOKEN is unset. */
-  baserow: { baseUrl: string; token: string; tables: { albums: number; photos: number; tags: number } } | null;
+  baserow: { baseUrl: string; token: string; tables: { albums: number; photos: number; tags: number }; webUrl: string } | null;
   vllmEnabled: boolean;
   vllmBaseUrl: string;
   /** Name the vLLM server exposes the model under (--served-model-name). */
@@ -91,7 +91,9 @@ function baserowConfig(): Env['baserow'] {
     if (!process.env[name]) throw new Error(`${name} must be set when BASEROW_URL and BASEROW_TOKEN are`);
     return int(name, 0);
   };
-  return { baseUrl, token, tables: { albums: table('BASEROW_TABLE_ALBUMS'), photos: table('BASEROW_TABLE_PHOTOS'), tags: table('BASEROW_TABLE_TAGS') } };
+  // Thumbnail links in Baserow point at the web dev server, whose proxy adds the API key.
+  const webUrl = optionalUrl('ALBUM_WEB_URL') ?? `http://127.0.0.1:${int('WEB_PORT', 5173)}`;
+  return { baseUrl, token, webUrl, tables: { albums: table('BASEROW_TABLE_ALBUMS'), photos: table('BASEROW_TABLE_PHOTOS'), tags: table('BASEROW_TABLE_TAGS') } };
 }
 
 /** VLLM_REVISION, else the REVISION file written when the model was downloaded. */

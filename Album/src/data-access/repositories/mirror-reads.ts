@@ -7,6 +7,7 @@ export interface MirrorAlbum {
 }
 
 export interface MirrorPhoto {
+  id: string;
   sha256: string;
   fileName: string;
   caption: string | null;
@@ -32,7 +33,7 @@ export class MirrorReadRepository {
   photos(): MirrorPhoto[] {
     const rows = this.db
       .prepare(
-        `SELECT a.sha256, a.taken_at AS takenAt,
+        `SELECT a.id, a.sha256, a.taken_at AS takenAt,
                 nullif(trim(coalesce(a.camera_make, '') || ' ' || coalesce(a.camera_model, '')), '') AS camera,
                 (SELECT display_filename FROM album_assets WHERE asset_id = a.id ORDER BY added_at LIMIT 1) AS fileName,
                 coalesce(d.manual_caption, d.ai_caption) AS caption,

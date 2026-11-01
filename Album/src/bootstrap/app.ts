@@ -64,7 +64,7 @@ export async function createApp(env: Env, logger: LoggerOption = true, queueOpti
   const exports = new Export(repos, files, app.log);
   const lifecycle = new Lifecycle(repos, files, artifact, search, processing, settings, app.log, env.assetGraceMs);
   const observability = new Observability(env, repos, settings, llm, imaging);
-  const mirror = new Mirror(repos, env.baserow && { target: { baseUrl: env.baserow.baseUrl, token: env.baserow.token }, tables: env.baserow.tables }, app.log);
+  const mirror = new Mirror(repos, env.baserow && { target: { baseUrl: env.baserow.baseUrl, token: env.baserow.token }, tables: env.baserow.tables, webUrl: env.baserow.webUrl }, app.log);
 
   await registerRoutes(app, { library, query, import: imports, processing, export: exports, lifecycle, settings, observability, mirror, idempotency: repos.idempotency, maxUploadBytes: env.maxImportBytes, apiKey: env.apiKey });
 

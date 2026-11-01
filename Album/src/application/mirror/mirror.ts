@@ -6,6 +6,8 @@ import type { MirrorPhoto } from '../../data-access/repositories/mirror-reads.js
 export interface BaserowConfig {
   target: BaserowTarget;
   tables: { albums: number; photos: number; tags: number };
+  /** Base of the thumbnail links written to Baserow. */
+  webUrl: string;
 }
 
 export interface SyncCounts {
@@ -35,6 +37,8 @@ const F = {
   albumCount: 'Photo count',
   albumCreated: 'Created date',
   sha: 'SHA-256 ID',
+  photoId: 'Photo ID',
+  thumbnail: 'Thumbnail',
   fileName: 'File name',
   caption: 'Caption',
   takenAt: 'Captured at',
@@ -117,7 +121,7 @@ export class Mirror {
     };
   }
 
-  private async run({ target, tables }: BaserowConfig): Promise<SyncCounts> {
+  private async run({ target, tables, webUrl }: BaserowConfig): Promise<SyncCounts> {
     const counts: SyncCounts = { created: 0, updated: 0, deleted: 0 };
     const albums = this.repos.mirrorReads.albums();
     const photos = this.repos.mirrorReads.photos();
@@ -137,6 +141,8 @@ export class Mirror {
 
     const photoFields = (p: MirrorPhoto) => ({
       [F.sha]: p.sha256,
+      [F.photoId]: p.id,
+      [F.thumbnail]: `${webUrl}/api/photos/${p.id}/thumbnail`,
       [F.fileName]: p.fileName,
       [F.caption]: p.caption ?? '',
       [F.takenAt]: utc(p.takenAt),
@@ -151,6 +157,8 @@ export class Mirror {
       photos.map((p) => ({ key: p.sha256, fields: photoFields(p) })),
       (row, f) =>
         text(row[F.fileName]) !== f[F.fileName] ||
+        text(row[F.photoId]) !== f[F.photoId] ||
+        text(row[F.thumbnail]) !== f[F.thumbnail] ||
         text(row[F.caption]) !== f[F.caption] ||
         text(row[F.camera]) !== f[F.camera] ||
         !sameTime(row[F.takenAt], f[F.takenAt] as string | null) ||

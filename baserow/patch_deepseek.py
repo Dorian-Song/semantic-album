@@ -168,6 +168,17 @@ edit(
     f"{reg[0]},{registry}.register(`generativeAIModel`,new {deepseek_class(openai_var)}({ctx}))",
 )
 
+# Nitro serves public files from a build-time manifest and sends the recorded size as Content-Length, so a
+# grown file would be cut off at its old length (and break the whole app). Record the new size and etag.
+manifest = FRONTEND / "server/chunks/nitro/nitro.mjs"
+size = client.stat().st_size
+entry = re.compile(
+    rf'("/_nuxt/{re.escape(client.name)}": \{{\s*"type": "[^"]*",\s*"etag": )"(?:\\.|[^"\\])*"(,\s*"mtime": "[^"]*",\s*"size": )\d+'
+)
+text, count = entry.subn(rf'\1"\\"{size:x}-deepseek-patch\\""\g<2>{size}', manifest.read_text())
+assert count == 1, "public asset manifest entry for the client bundle not found"
+manifest.write_text(text)
+
 edit(
     FRONTEND / "server/chunks/virtual/entry.mjs",
     'registry.register("generativeAIModel", new OpenRouterModelType(context));',
