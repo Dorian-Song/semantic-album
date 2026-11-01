@@ -29,6 +29,9 @@ Local API (Node + Fastify) ── SQLite (albums, photos, descriptions, tasks, s
    ├── cloud vision: DeepSeek (primary), OpenAI (fallback)        ← photo
    ├── n8n workflow in Docker: tidy text, write/read a Data Table  ← text only
    └── Baserow in Docker: text copy of albums, photos and tags    ← text only
+            ├── Baserow app: albums, photos, photo submissions
+            └── Operaton in Docker: photo-review process; a worker runs its
+                AI privacy check (DeepSeek, text only) and publishes to Album
 ```
 
 The SQLite database and the photo files are the source of truth. n8n and Baserow are optional, self-hosted, and only ever receive text; if they are down, the app keeps working and catches up later. Without the GPU model, Meaning and Both searches fall back to Words.
@@ -67,6 +70,8 @@ Set `VLLM_ENABLED=false` in `Album/.env` to run without it.
 
 **n8n and Baserow (optional).** See [n8n/README.md](n8n/README.md) and [baserow/README.md](baserow/README.md). In short: run `docker compose up -d` in `n8n/`, create an API key, and `node n8n/deploy.mjs` deploys the workflow and connects it to the app; run `docker compose up -d --build` in `baserow/`, then put the table ids and a database token in `Album/.env`.
 
+**Photo review (optional).** Contributors submit photos for a shared album in the Baserow app; an Operaton process checks each one with an AI privacy review and publishes low-risk photos automatically, while the rest wait for an album admin in Operaton's Tasklist. See [operaton/README.md](operaton/README.md) and the app section of [baserow/README.md](baserow/README.md).
+
 **API.** Every `/api` request except `/api/health` needs the `X-API-Key` header when `ALBUM_API_KEY` is set; the web app's dev proxy adds it. A Postman collection is in [Album/api](Album/api/README.md).
 
 ## Repository layout
@@ -76,7 +81,7 @@ Set `VLLM_ENABLED=false` in `Album/.env` to run without it.
 | `Album/src/` | Backend: ingress, application modules, infrastructure capabilities, data access, SQLite migrations |
 | `Album/app/` | Web app |
 | `Album/api/` | Postman collection and environment |
-| `n8n/`, `baserow/` | Self-hosted low-code services (Docker) |
+| `n8n/`, `baserow/`, `operaton/` | Self-hosted low-code and workflow services (Docker), the Baserow app builder script, and the review workflow with its worker |
 | `docs/` | Architecture, design notes and the decision log |
 | `design/` | UI concept images |
 | `apps/`, `automation/` | The earlier prototype, kept for history |
