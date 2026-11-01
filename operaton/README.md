@@ -22,3 +22,7 @@ Operaton is an open-source BPMN engine (Apache 2.0), the community fork of Camun
 | `demo` | `demo` | operaton-admin | Cockpit and Admin |
 
 If DeepSeek fails three times, the photo goes to the admin as medium risk instead of blocking. An unknown photo id becomes an incident in Cockpit.
+
+## Review notifications (Make)
+
+When a submission reaches Waiting for admin, Published or Rejected, the worker posts its text (never the photo) to a Make scenario: Custom webhook → filter on a shared secret → Set variables (subject and body) → Gmail "Send an email" → Webhook response 200, with an error-handler route that answers 502 with the error. The outcome is written to the submission's **Notification** field (`Notified`, `Sent, not confirmed`, or `Failed n/3` with the reason). Failed notifications are retried up to three times, waiting n × 30 s after attempt n; a notification never holds up the review. Set `MAKE_WEBHOOK_URL` and `MAKE_WEBHOOK_SECRET` in `Album/.env`; without them notifications are off.

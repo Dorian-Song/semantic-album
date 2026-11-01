@@ -29,6 +29,8 @@ export const config = {
   baserowToken: get('BASEROW_TOKEN', ''),
   photosTable: get('BASEROW_TABLE_PHOTOS', ''),
   submissionsTable: get('BASEROW_TABLE_SUBMISSIONS', ''),
+  makeWebhookUrl: get('MAKE_WEBHOOK_URL', ''),
+  makeWebhookSecret: get('MAKE_WEBHOOK_SECRET', ''),
 };
 
 /** JSON request helper. Throws an Error carrying `status` for non-2xx answers. */

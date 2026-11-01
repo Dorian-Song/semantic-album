@@ -2,7 +2,9 @@
 //   new row (Status = Submitted)       -> start a photo-review process, store its id, Status = AI review
 //   row set to Withdrawn by the user   -> cancel the running process
 //   every row with a running process   -> copy status, AI risk and findings, and the admin's comment back
+//   status reaches Waiting for admin / Published / Rejected -> notify the album admin through Make (notify.mjs)
 import { config, request } from './config.mjs';
+import { notificationsEnabled, notifies, retryDue, sendNotification } from './notify.mjs';
 
 const engine = config.operatonUrl;
 const FINAL = new Set(['Published', 'Rejected', 'Withdrawn', 'Error']);
@@ -83,6 +85,11 @@ export async function syncSubmissions(log) {
   for (const row of await rows(config.submissionsTable)) {
     const status = selected(row.Status);
     const processId = row['Process ID'];
+    const retryFor = notificationsEnabled() && retryDue(row);
+    if (retryFor) {
+      await updateRow(row.id, { Notification: await sendNotification(row, retryFor, {}, log) });
+      continue;
+    }
     if (status === 'Submitted' && !processId) {
       await start(row, log);
     } else if (status === 'Withdrawn' && processId) {
@@ -99,6 +106,9 @@ export async function syncSubmissions(log) {
         next['AI findings'] === (row['AI findings'] ?? '') &&
         next['Admin comment'] === (row['Admin comment'] ?? '');
       if (!same) {
+        if (next.Status !== status && notificationsEnabled() && notifies(next.Status)) {
+          next.Notification = await sendNotification(row, next.Status, next, log);
+        }
         await updateRow(row.id, next);
         log('status', `submission ${row.id}: ${next.Status}`);
       }
