@@ -334,6 +334,9 @@ code {
   position: absolute;
   top: calc(100% + 6px);
   left: 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 0.85rem;
   z-index: 5;
 }
@@ -3155,4 +3158,15 @@ textarea {
 }
 :root[data-theme='dark'] .cover-empty {
   background: repeating-linear-gradient(45deg, #1a222d, #1a222d 10px, #1e2733 10px, #1e2733 20px);
+}
+:root[data-theme='dark'] .tags li {
+  color: var(--accent-strong);
+}
+:root[data-theme='dark'] .callout,
+:root[data-theme='dark'] .callout-warn,
+:root[data-theme='dark'] .callout-ok {
+  color: var(--text);
+}
+:root[data-theme='dark'] .banner-tagline {
+  color: var(--text-2);
 }

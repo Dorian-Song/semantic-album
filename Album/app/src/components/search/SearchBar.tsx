@@ -110,16 +110,15 @@ export function SearchBar() {
       <kbd aria-hidden="true">{isMac ? '⌘ K' : 'Ctrl K'}</kbd>
       {(image || notice) && (
         <div className="search-attachment" role="status">
-          {image ? (
+          {image && (
             <span className="search-attachment-name">
               <Icon name="image" size={14} /> {image.name || 'Pasted image'}
               <button type="button" aria-label="Remove image" onClick={() => setImage(null)}>
                 <Icon name="x" size={14} />
               </button>
             </span>
-          ) : (
-            <span className="form-error">{notice}</span>
           )}
+          {notice && <span className="form-error">{notice}</span>}
         </div>
       )}
     </form>
