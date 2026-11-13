@@ -37,7 +37,8 @@ export interface Derived {
 }
 
 /** Formats sharp decodes itself (its libheif is built with AV1 only, so AVIF but not HEIC). */
-const SHARP_NATIVE: ReadonlySet<ImageFormat> = new Set(['jpeg', 'png', 'gif', 'webp', 'tiff', 'avif']);
+/** Formats sharp decodes itself, in memory; the rest need an external decoder working on files. */
+export const SHARP_NATIVE: ReadonlySet<ImageFormat> = new Set(['jpeg', 'png', 'gif', 'webp', 'tiff', 'avif']);
 const DISPLAY_LONG_EDGE = 2560;
 const THUMBNAIL_LONG_EDGE = 512;
 const EXIF_DATE = /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/;
@@ -110,6 +111,24 @@ export class Imaging {
   /** A JPEG no larger than `longEdge` on its longer side. */
   resizeJpeg(image: Buffer, longEdge: number, quality: number): Promise<Buffer> {
     return sharp(image).resize(longEdge, longEdge, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality }).toBuffer();
+  }
+
+  /**
+   * Prepares an image that is not in the library for embedding, entirely in memory: the same steps a library
+   * photo goes through (EXIF rotation, transparency on white, then a JPEG no larger than `longEdge`), so its
+   * vector is comparable. Only SHARP_NATIVE formats; throws UndecodableImageError otherwise.
+   */
+  async queryJpeg(image: Buffer, longEdge: number, quality: number): Promise<Buffer> {
+    try {
+      return await sharp(image, { failOn: 'error' })
+        .rotate()
+        .resize(longEdge, longEdge, { fit: 'inside', withoutEnlargement: true })
+        .flatten({ background: '#ffffff' })
+        .jpeg({ quality })
+        .toBuffer();
+    } catch {
+      throw new UndecodableImageError('unsupported_format');
+    }
   }
 
   /** Renders an SVG as PNG. */

@@ -32,7 +32,8 @@ const PROVIDER_FORMATS: Record<string, LlmImage['mime']> = { jpeg: 'image/jpeg',
  */
 const MAX_ORIGINAL_BYTES = 5 * 1024 * 1024;
 /** The embedding model resizes images to about 1.3 megapixels anyway. */
-const EMBED_LONG_EDGE = 1280;
+/** Long edge of the JPEG sent for image embedding; queries by image use the same size. */
+export const EMBED_LONG_EDGE = 1280;
 
 /** Describes the photo with the AI model and stores the draft (never the user's text). */
 export class DescribeStep implements StepHandler {

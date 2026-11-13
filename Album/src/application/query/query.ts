@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { ReadStream } from 'node:fs';
 import { ServiceUnavailableError } from '../../data-access/egress/errors.js';
 import type { FileStore } from '../../data-access/file-store/file-store.js';
@@ -8,9 +9,11 @@ import type { SearchMode } from '../../data-access/repositories/settings.js';
 import { queryTerms } from '../../data-access/search-store/text-index.js';
 import type { SearchStore } from '../../data-access/search-store/search-store.js';
 import type { Embedder } from '../../infra/embedding/embedding.js';
-import { BROWSER_NATIVE, type ImageFormat } from '../../infra/imaging/format.js';
+import { BROWSER_NATIVE, sniffImage, SNIFF_BYTES, type ImageFormat } from '../../infra/imaging/format.js';
+import { SHARP_NATIVE, UndecodableImageError, type Imaging } from '../../infra/imaging/imaging.js';
+import { EMBED_LONG_EDGE } from '../processing/steps.js';
 import type { SettingsService } from '../../infra/settings/settings.js';
-import { notFound } from '../../shared/errors.js';
+import { AppError, notFound } from '../../shared/errors.js';
 
 export type { PhotoSummary };
 
@@ -94,12 +97,30 @@ export interface SearchResponse {
   timingsMs: { total: number; scope: number; words: number; embedQuery: number; vectorScan: number; hydrate: number };
 }
 
+/** Search by an image that is not stored: same scope and filters as a text search, without the query or mode. */
+export type ImageSearchScope = Omit<SearchRequest, 'query' | 'mode' | 'offset' | 'limit'>;
+
+export interface ImageSearchResponse {
+  /** Most similar first, at most CANDIDATES; the client pages through them. */
+  items: (PhotoSummary & { albums: AlbumRef[] })[];
+  total: number;
+  /** The upload is a library photo, so its stored vector was used and the embedding model was not needed. */
+  reusedLibraryVector: boolean;
+  /** In-scope photos without an image vector yet (still being processed); they cannot be found by image. */
+  notYetIndexed: number;
+  excludedForMissingMetadata: number;
+  timingsMs: { total: number; embedQuery: number; vectorScan: number; hydrate: number };
+}
+
 export type FileVariant = 'original' | 'display' | 'thumbnail';
 
 /** Candidates taken from each ranking before fusion and paging: results are the most relevant N. */
 const CANDIDATES = 300;
 const RRF_K = 60;
 const QUERY_CACHE = 200;
+/** Vectors of recent query images, by SHA-256 of their bytes, so changing the scope does not re-embed. */
+const IMAGE_QUERY_CACHE = 20;
+const IMAGE_FORMATS = [...SHARP_NATIVE].map((f) => f.toUpperCase()).join(', ');
 const WORDS_WEIGHT = { short: 1, medium: 0.5, long: 0.25 };
 
 function nextDay(date: string): string {
@@ -127,6 +148,7 @@ function fuse(lists: string[][], weights: number[]): string[] {
 /** Reads the library for the user: browsing and search. Changes nothing. */
 export class Query {
   private readonly queryCache = new Map<string, Float32Array>();
+  private readonly imageQueryCache = new Map<string, Float32Array>();
 
   constructor(
     private readonly repos: Repositories,
@@ -134,6 +156,7 @@ export class Query {
     private readonly search: SearchStore,
     private readonly embedder: Embedder,
     private readonly settings: SettingsService,
+    private readonly imaging: Imaging,
   ) {}
 
   // ---------- browsing ----------
@@ -232,17 +255,7 @@ export class Query {
 
     // Scope and filters decide which photos may appear, before any ranking or cut-off.
     let t = performance.now();
-    const albums = req.albumIds?.length ? req.albumIds : null;
-    const filtered = !!(albums || req.takenFrom || req.takenTo || req.camera || req.kind);
-    const scoped = filtered
-      ? this.repos.photoReads.matching({
-          albumIds: albums,
-          takenFrom: req.takenFrom ?? null,
-          takenBefore: req.takenTo ? nextDay(req.takenTo) : null,
-          camera: req.camera ?? null,
-          kind: req.kind ?? null,
-        })
-      : null;
+    const { albums, scoped } = this.scope(req);
     const eligible = scoped?.ids ?? null;
     timings.scope = performance.now() - t;
 
@@ -301,6 +314,82 @@ export class Query {
       excludedForMissingMetadata: scoped?.excluded ?? 0,
       timingsMs: Object.fromEntries(Object.entries(timings).map(([k, v]) => [k, Math.round(v * 10) / 10])) as SearchResponse['timingsMs'],
     };
+  }
+
+  /**
+   * Finds photos that look like an image the user uploads or pastes. Nothing about the image is stored: it is
+   * decoded in memory, and only its vector is kept, in a small in-memory cache keyed by the SHA-256 of its bytes.
+   * When those bytes are a library photo, that photo's stored vector is used and the model is not needed. Ranks
+   * by image similarity only; the uploaded photo itself, if in the library, is included like any other.
+   */
+  async searchByImage(bytes: Buffer, req: ImageSearchScope): Promise<ImageSearchResponse> {
+    const started = performance.now();
+    const format = sniffImage(bytes.subarray(0, SNIFF_BYTES));
+    if (!format || !SHARP_NATIVE.has(format)) {
+      throw new AppError(415, 'unsupported_format', `This file format is not supported for image search. Use ${IMAGE_FORMATS}.`);
+    }
+
+    let t = performance.now();
+    const sha = createHash('sha256').update(bytes).digest('hex');
+    const libraryId = this.repos.assets.idBySha(sha);
+    const stored = libraryId ? this.search.imageVector(libraryId) : undefined;
+    let vector = stored ?? this.imageQueryCache.get(sha);
+    if (!vector) {
+      let jpeg: Buffer;
+      try {
+        jpeg = await this.imaging.queryJpeg(bytes, EMBED_LONG_EDGE, 90);
+      } catch (err) {
+        if (err instanceof UndecodableImageError) throw new AppError(415, 'unsupported_format', 'This image could not be read. It may be damaged.');
+        throw err;
+      }
+      try {
+        vector = await this.embedder.embedImage(jpeg);
+      } catch (err) {
+        if (err instanceof ServiceUnavailableError) {
+          throw new AppError(503, 'image_model_unavailable', `Searching by an image needs the local image model, which is not available: ${err.message}`);
+        }
+        throw err;
+      }
+      this.imageQueryCache.set(sha, vector);
+      if (this.imageQueryCache.size > IMAGE_QUERY_CACHE) this.imageQueryCache.delete(this.imageQueryCache.keys().next().value!);
+    }
+    const embedQuery = performance.now() - t;
+
+    t = performance.now();
+    const { albums, scoped } = this.scope(req);
+    const among = new Set(scoped?.ids ?? this.repos.photoReads.visibleIds());
+    const scores = this.search.scoreImages(vector, among);
+    const ranked = [...scores.entries()].sort((a, b) => b[1] - a[1]).slice(0, CANDIDATES).map(([id]) => id);
+    const vectorScan = performance.now() - t;
+
+    t = performance.now();
+    const items = this.repos.photoReads.cards(ranked, albums);
+    const hydrate = performance.now() - t;
+    const round = (v: number) => Math.round(v * 10) / 10;
+    return {
+      items,
+      total: items.length,
+      reusedLibraryVector: !!stored,
+      notYetIndexed: among.size - scores.size,
+      excludedForMissingMetadata: scoped?.excluded ?? 0,
+      timingsMs: { total: round(performance.now() - started), embedQuery: round(embedQuery), vectorScan: round(vectorScan), hydrate: round(hydrate) },
+    };
+  }
+
+  /** The photos a search may return, from the album scope and the date, camera and type filters; null means all. */
+  private scope(req: ImageSearchScope): { albums: string[] | null; scoped: { ids: string[]; excluded: number } | null } {
+    const albums = req.albumIds?.length ? req.albumIds : null;
+    const filtered = !!(albums || req.takenFrom || req.takenTo || req.camera || req.kind);
+    const scoped = filtered
+      ? this.repos.photoReads.matching({
+          albumIds: albums,
+          takenFrom: req.takenFrom ?? null,
+          takenBefore: req.takenTo ? nextDay(req.takenTo) : null,
+          camera: req.camera ?? null,
+          kind: req.kind ?? null,
+        })
+      : null;
+    return { albums, scoped };
   }
 
   /**

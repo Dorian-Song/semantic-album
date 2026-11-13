@@ -78,6 +78,11 @@ export class SearchStore {
     this.descriptions.forget(assetId);
   }
 
+  /** A library photo's image vector, if it has been embedded. */
+  imageVector(assetId: string): Float32Array | undefined {
+    return this.images.get(assetId);
+  }
+
   scoreImages(query: Float32Array, among: ReadonlySet<string>): Map<string, number> {
     return this.images.score(query, among);
   }

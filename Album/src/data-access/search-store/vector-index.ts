@@ -39,6 +39,12 @@ export class VectorIndex {
     if (this.loaded) this.vectors.set(assetId, normalised);
   }
 
+  /** A photo's stored vector (normalised), if it has one. */
+  get(assetId: string): Float32Array | undefined {
+    this.load();
+    return this.vectors.get(assetId);
+  }
+
   /** Deletes the stored row; the in-memory copy goes when `forget` is called. */
   deleteRow(assetId: string): void {
     this.db.prepare(`DELETE FROM ${this.table} WHERE asset_id = ?`).run(assetId);
