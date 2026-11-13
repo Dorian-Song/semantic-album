@@ -11,6 +11,8 @@ A local-first photo library that understands what is in your photos. It keeps yo
 - **Reads common formats** (JPEG, PNG, WebP, GIF, BMP, TIFF, HEIC/HEIF, AVIF), identified by content rather than file extension. A file that cannot be decoded is reported and does not stop the import.
 - **Describes every photo.** A cloud vision model (DeepSeek, with OpenAI as fallback) writes a description, tags and a list of visible objects. You can edit the text; a later AI run never replaces your edit.
 - **Searches** by **Words** (full-text index), **Meaning** (image and text vectors from a local multimodal model), or **Both**, across one album, several, or all of them.
+- **Searches by image.** Choose, drop or paste a picture into the search bar to find similar photos in the same scope. The picture is processed in memory and not kept; if it is already in the library, its stored vector is reused.
+- **Light and dark themes**, switched at the bottom of the sidebar and remembered in the browser. A description can be copied with one click.
 - **Exports** an album or a selection as a ZIP with the original photos, JSON and CSV metadata, and an XMP sidecar per photo.
 - **Keeps working through restarts.** Imports and background processing resume where they stopped, with live progress and throughput for each stage.
 - **Says where data goes.** The settings page lists, for the current configuration, which service receives what.
@@ -90,7 +92,6 @@ Set `VLLM_ENABLED=false` in `Album/.env` to run without it.
 
 Working today: everything listed under *What it does*. Planned next:
 
-- Search by example photo.
 - Very tall or wide images, such as scrolling phone screenshots, cut into overlapping pieces before they are described.
 - A retry with DeepSeek before falling back to OpenAI.
 - A full accessibility pass: keyboard use, screen-reader labels, colour contrast.

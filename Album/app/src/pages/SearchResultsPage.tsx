@@ -1,12 +1,13 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { listAlbums } from '../api/albums';
 import { thumbnailUrl } from '../api/photos';
-import { getFacets, searchPhotos, type SearchMode, type SearchParams } from '../api/search';
+import { getFacets, searchByImage, searchPhotos, type ImageSearchScope, type SearchMode, type SearchParams } from '../api/search';
 import { getSettings } from '../api/settings';
 import { Icon } from '../components/common/Icon';
 import { Callout, EmptyState, ErrorState, Loading } from '../components/common/states';
+import { getImageQuery } from '../hooks/imageQuery';
 import { setSearchContext } from '../hooks/searchContext';
 
 const MODES: { value: SearchMode; label: string; hint: string }[] = [
@@ -43,6 +44,9 @@ export function SearchResultsPage() {
   const takenTo = params.get('to') ?? '';
   const camera = params.get('camera') ?? '';
   const kind = params.get('kind') ?? '';
+  // Search by image: the URL carries a token, the file itself is held in memory by the search bar.
+  const imageToken = params.get('image');
+  const imageFile = getImageQuery(imageToken);
 
   const request: SearchParams = {
     query: q,
@@ -58,10 +62,30 @@ export function SearchResultsPage() {
     queryFn: ({ pageParam }) => searchPhotos({ ...request, offset: pageParam, limit: PAGE }),
     initialPageParam: 0,
     getNextPageParam: (last) => (last.offset + last.items.length < last.total ? last.offset + last.items.length : undefined),
-    enabled: q.trim() !== '' && (params.has('mode') || settings.isSuccess),
+    enabled: !imageToken && q.trim() !== '' && (params.has('mode') || settings.isSuccess),
   });
-  const items = results.data?.pages.flatMap((p) => p.items) ?? [];
-  const first = results.data?.pages[0];
+
+  const imageScope: ImageSearchScope = {
+    ...(albumIds.length ? { albumIds } : {}),
+    ...(takenFrom ? { takenFrom } : {}),
+    ...(takenTo ? { takenTo } : {}),
+    ...(camera ? { camera } : {}),
+    ...(kind ? { kind } : {}),
+  };
+  const imageResults = useQuery({
+    queryKey: ['image-search', imageToken, imageScope],
+    queryFn: () => searchByImage(imageFile!, imageScope),
+    enabled: !!imageFile,
+    retry: false,
+  });
+  // The image search returns its whole ranking at once; it is shown a page at a time.
+  const [shown, setShown] = useState(PAGE);
+  useEffect(() => setShown(PAGE), [imageToken, params]);
+
+  const imageItems = imageResults.data?.items ?? [];
+  const items = imageToken ? imageItems.slice(0, shown) : (results.data?.pages.flatMap((p) => p.items) ?? []);
+  const first = imageToken ? undefined : results.data?.pages[0];
+  const imageFirst = imageToken ? imageResults.data : undefined;
   const href = `/search?${params.toString()}`;
 
   useEffect(() => {
@@ -89,7 +113,7 @@ export function SearchResultsPage() {
   return (
     <>
       <header className="page-title">
-        <h1 className="display-title">{q ? 'Search results' : 'Search'}</h1>
+        <h1 className="display-title">{imageToken ? 'Similar photos' : q ? 'Search results' : 'Search'}</h1>
         <p className="muted">Find the moments that matter.</p>
       </header>
 
@@ -128,19 +152,21 @@ export function SearchResultsPage() {
           </div>
         </div>
 
-        <div className="search-mode">
-          <span className="field-label" id="mode-label">
-            Search mode
-          </span>
-          <div className="segmented" role="radiogroup" aria-labelledby="mode-label">
-            {MODES.map((m) => (
-              <label key={m.value} title={m.hint} className={mode === m.value ? 'is-active' : ''}>
-                <input type="radio" name="mode" value={m.value} checked={mode === m.value} onChange={() => update('mode', m.value)} />
-                {m.label}
-              </label>
-            ))}
+        {!imageToken && (
+          <div className="search-mode">
+            <span className="field-label" id="mode-label">
+              Search mode
+            </span>
+            <div className="segmented" role="radiogroup" aria-labelledby="mode-label">
+              {MODES.map((m) => (
+                <label key={m.value} title={m.hint} className={mode === m.value ? 'is-active' : ''}>
+                  <input type="radio" name="mode" value={m.value} checked={mode === m.value} onChange={() => update('mode', m.value)} />
+                  {m.label}
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {(hasDates || hasCameras || hasKinds) && (
@@ -186,7 +212,35 @@ export function SearchResultsPage() {
         </div>
       )}
 
-      {!q && <EmptyState title="Type something to search for" icon="search" />}
+      {!q && !imageToken && <EmptyState title="Type something to search for" icon="search" />}
+      {imageToken && !imageFile && (
+        <EmptyState title="Attach the image again" icon="image">
+          <p>The image is not kept after the page reloads. Choose, drop or paste it in the search bar to search again.</p>
+        </EmptyState>
+      )}
+      {imageFile && imageResults.isPending && <Loading label="Finding similar photos…" />}
+      {imageResults.isError && <ErrorState error={imageResults.error} onRetry={() => void imageResults.refetch()} />}
+      {imageFirst && (
+        <div className="results-head" aria-live="polite">
+          <div>
+            <h2>Best matches</h2>
+            <p className="muted">
+              like “{imageFile?.name || 'Pasted image'}” · {selectedAlbums.length ? `from ${names(selectedAlbums.map((a) => a.name))}` : 'from all albums'} ·{' '}
+              {Math.round(imageFirst.timingsMs.total)} ms
+            </p>
+          </div>
+        </div>
+      )}
+      {imageFirst && imageFirst.notYetIndexed > 0 && (
+        <p className="muted small">
+          {imageFirst.notYetIndexed.toLocaleString()} photo{imageFirst.notYetIndexed === 1 ? ' is' : 's are'} still being indexed and cannot be found by image yet.
+        </p>
+      )}
+      {imageFirst && imageFirst.total === 0 && (
+        <EmptyState title="No photos to compare with" icon="image">
+          <p>None of the photos in this scope can be searched by image yet. Try more albums or fewer filters.</p>
+        </EmptyState>
+      )}
       {results.isPending && q && <Loading label="Searching…" />}
       {results.isError && <ErrorState error={results.error} onRetry={() => void results.refetch()} />}
 
@@ -245,6 +299,11 @@ export function SearchResultsPage() {
           </li>
         ))}
       </ul>
+      {imageToken && shown < imageItems.length && (
+        <button type="button" className="btn load-more" onClick={() => setShown((n) => n + PAGE)}>
+          Show more
+        </button>
+      )}
       {results.hasNextPage && (
         <button type="button" className="btn load-more" disabled={results.isFetchingNextPage} onClick={() => void results.fetchNextPage()}>
           {results.isFetchingNextPage ? 'Loading…' : 'Show more'}

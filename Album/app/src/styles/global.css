@@ -218,6 +218,35 @@ code {
   font-size: 0.88rem;
   color: var(--muted);
 }
+.theme-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.theme-switch button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.theme-switch button.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
 .sidebar-note .icon {
   color: var(--green);
   margin-bottom: 8px;
@@ -268,7 +297,7 @@ code {
 }
 .search-bar kbd {
   position: absolute;
-  right: 10px;
+  right: 46px;
   top: 50%;
   transform: translateY(-50%);
   background: var(--surface-2);
@@ -277,6 +306,56 @@ code {
   padding: 2px 7px;
   color: var(--muted);
   pointer-events: none;
+}
+.search-bar input {
+  padding-right: 110px;
+}
+.search-image-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.search-image-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+/* Below the bar, out of the layout flow, so attaching an image does not move the header. */
+.search-attachment {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 4px;
+  font-size: 0.85rem;
+  z-index: 5;
+}
+.search-attachment-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.search-attachment-name button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 999px;
 }
 .topbar-actions {
   display: flex;
@@ -1431,6 +1510,28 @@ textarea {
   font-size: 0.8rem;
   color: var(--muted);
   margin-bottom: 4px;
+}
+.description-meta .copy-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.description-meta .copy-btn:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.description-meta .copy-btn.is-done {
+  color: var(--ok);
+  border-color: var(--ok);
 }
 .description-meta .icon {
   color: var(--accent);
@@ -3025,4 +3126,33 @@ textarea {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/*
+ * Dark theme: surfaces that use fixed light colours instead of the tokens. Only the ones that become unreadable
+ * are overridden; labels and frames over photos keep their light look in both themes.
+ */
+:root[data-theme='dark'] .sidebar-note {
+  background: linear-gradient(160deg, #15241c, #18202b);
+}
+:root[data-theme='dark'] .banner,
+:root[data-theme='dark'] .album-header {
+  background: #18212d;
+  border-color: var(--border);
+}
+:root[data-theme='dark'] .banner::before {
+  background: linear-gradient(100deg, rgb(15 20 27 / 88%) 0%, rgb(15 20 27 / 62%) 42%, rgb(15 20 27 / 25%) 100%);
+}
+:root[data-theme='dark'] .album-header::before {
+  background: linear-gradient(90deg, rgb(15 20 27 / 82%), rgb(15 20 27 / 55%));
+}
+:root[data-theme='dark'] .album-header .stages {
+  background: rgb(22 29 39 / 60%);
+  border-color: rgb(255 255 255 / 8%);
+}
+:root[data-theme='dark'] .album-header .stage {
+  border-left-color: rgb(255 255 255 / 10%);
+}
+:root[data-theme='dark'] .cover-empty {
+  background: repeating-linear-gradient(45deg, #1a222d, #1a222d 10px, #1e2733 10px, #1e2733 20px);
 }

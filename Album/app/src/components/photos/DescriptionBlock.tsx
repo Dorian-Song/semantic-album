@@ -6,6 +6,7 @@ import { getProcessing, waitingReason } from '../../api/processing';
 import type { PhotoDetail } from '../../api/types';
 import { useRefreshLibrary } from '../../app/providers';
 import { Icon } from '../common/Icon';
+import { CopyDescriptionButton } from './CopyDescriptionButton';
 
 const PROVIDERS: Record<string, string> = { deepseek: 'DeepSeek', openai: 'OpenAI' };
 
@@ -35,6 +36,7 @@ export function DescriptionBlock({ photo, onEdit }: { photo: PhotoDetail; onEdit
           <p className="description-meta">
             <Icon name={d.manual ? 'pencil' : 'sparkle'} size={14} />
             {d.manual ? 'Written by you' : `AI description${d.provider ? ` · ${PROVIDERS[d.provider] ?? d.provider}` : ''}`}
+            <CopyDescriptionButton text={d.effective} />
           </p>
           <p className="description">{d.effective}</p>
         </div>

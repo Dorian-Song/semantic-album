@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { NavLink, Outlet, useMatch } from 'react-router';
 import { getAlbum } from '../../api/albums';
+import { useTheme } from '../../hooks/theme';
 import { Icon, Logo, type IconName } from '../common/Icon';
 import { CreateAlbumDialog } from '../dialogs/AlbumDialogs';
 import { ImportFolderDialog, ImportPhotosDialog } from '../dialogs/ImportDialogs';
@@ -28,6 +29,21 @@ function CurrentAlbum() {
         {album.data.name}
       </NavLink>
     </li>
+  );
+}
+
+/** Light / dark switch at the bottom of the sidebar. */
+function ThemeSwitch() {
+  const [theme, setTheme] = useTheme();
+  return (
+    <div className="theme-switch" role="radiogroup" aria-label="Colour theme">
+      {(['light', 'dark'] as const).map((t) => (
+        <button key={t} type="button" role="radio" aria-checked={theme === t} className={theme === t ? 'is-active' : ''} onClick={() => setTheme(t)}>
+          <Icon name={t === 'light' ? 'sun' : 'moon'} size={16} />
+          {t === 'light' ? 'Light' : 'Dark'}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -74,6 +90,7 @@ export function AppShell() {
           <p className="sidebar-note-title">A calmer place for your memories.</p>
           <p>All your photos, safely on your computer.</p>
         </div>
+        <ThemeSwitch />
       </aside>
       <div className="main-column">
         <header className="topbar">

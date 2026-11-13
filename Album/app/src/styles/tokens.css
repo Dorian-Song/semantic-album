@@ -33,3 +33,34 @@
   --font-display: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif;
   --font-hand: 'Caveat', 'Segoe Script', cursive;
 }
+
+/* Dark theme: the same variables, set by the theme switch on <html data-theme="dark">. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f141b;
+  --surface: #161d27;
+  --surface-2: #1c2531;
+  --sidebar: #121821;
+  --border: #283343;
+  --border-strong: #364457;
+  --text: #e6ebf2;
+  --text-2: #c4cdd8;
+  --muted: #94a1b2;
+
+  --accent: #5b8def;
+  --accent-strong: #7aa3f3;
+  --accent-soft: #1b2a45;
+  --accent-soft-2: #22355a;
+  --green: #4fb685;
+  --green-strong: #6ccb9b;
+  --green-soft: #15291f;
+  --danger: #ef6b5f;
+  --danger-soft: #3a1c1a;
+  --warn: #e0a24a;
+  --warn-soft: #33270f;
+  --ok: #4ade80;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 6px 20px rgb(0 0 0 / 35%);
+  --shadow-lg: 0 20px 50px rgb(0 0 0 / 55%);
+}
