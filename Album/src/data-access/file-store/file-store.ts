@@ -210,6 +210,23 @@ export class FileStore {
     return { files, ignored };
   }
 
+  /**
+   * One level of a host folder for browsing: its visible subfolders (name order, hidden ones skipped, symlinks
+   * not followed) and how many files directly inside have one of `extensions`. Throws the fs error as is.
+   */
+  async listHostFolder(dir: string, extensions: ReadonlySet<string>): Promise<{ folders: string[]; imageFiles: number }> {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const folders: string[] = [];
+    let imageFiles = 0;
+    for (const e of entries) {
+      if (e.name.startsWith('.')) continue;
+      if (e.isDirectory()) folders.push(e.name);
+      else if (e.isFile() && extensions.has(path.extname(e.name).toLowerCase())) imageFiles++;
+    }
+    folders.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    return { folders, imageFiles };
+  }
+
   readHostFile(file: string): Readable {
     return createReadStream(file);
   }

@@ -1,3 +1,4 @@
+import os from 'node:os';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 import type { FileStore } from '../../data-access/file-store/file-store.js';
@@ -74,6 +75,20 @@ type Outcome = { state: ItemState; reason: string | null; assetId?: string | nul
 /** Extensions considered when scanning a host folder. Content is still checked; other files are ignored. */
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.jpe', '.png', '.gif', '.bmp', '.dib', '.webp', '.tif', '.tiff', '.heic', '.heif', '.hif', '.avif']);
 const MAX_MANIFEST = 50_000;
+
+/** One level of a host folder, for choosing a folder to import. */
+export interface HostFolderListing {
+  /** Absolute path of the listed folder. */
+  path: string;
+  /** Its parent, or null at the filesystem root. */
+  parent: string | null;
+  /** The user's home folder, where browsing starts. */
+  home: string;
+  /** Visible subfolders, name order. */
+  folders: { name: string; path: string }[];
+  /** Image files directly in this folder (subfolders not counted). */
+  imageFiles: number;
+}
 const ABORT_CODES = new Set(['ECONNRESET', 'ERR_STREAM_PREMATURE_CLOSE', 'ABORT_ERR']);
 
 function clock(startedAt: string | null, lastAt: string | null, done: number, finished: boolean, avgMs: number | null): StageClock | null {
@@ -123,6 +138,33 @@ export class Import {
   ) {}
 
   // ---------- host folder ----------
+
+  /**
+   * Lists one level of a folder on the machine running Album, so the user can browse to the folder to import
+   * instead of typing its path. Starts at the home folder when no path is given. Read-only.
+   */
+  async browseHostFolder(folderPath?: string): Promise<HostFolderListing> {
+    const home = os.homedir();
+    if (folderPath && !path.isAbsolute(folderPath)) throw badRequest('invalid_path', 'Give an absolute folder path');
+    const dir = path.resolve(folderPath || home);
+    let listing;
+    try {
+      listing = await this.files.listHostFolder(dir, IMAGE_EXTENSIONS);
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT' || code === 'ENOTDIR') throw new AppError(404, 'folder_not_found', 'That folder does not exist on the machine running Album');
+      if (code === 'EACCES' || code === 'EPERM') throw new AppError(403, 'folder_not_readable', 'Album is not allowed to read that folder');
+      throw err;
+    }
+    const parent = path.dirname(dir);
+    return {
+      path: dir,
+      parent: parent === dir ? null : parent,
+      home,
+      folders: listing.folders.map((name) => ({ name, path: path.join(dir, name) })),
+      imageFiles: listing.imageFiles,
+    };
+  }
 
   async startFolderImport(folderPath: string, albumId?: string): Promise<ImportProgress> {
     if (!path.isAbsolute(folderPath)) throw badRequest('invalid_path', 'Enter an absolute folder path on the machine running Album');

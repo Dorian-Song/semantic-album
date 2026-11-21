@@ -7,6 +7,13 @@ import { idParams } from '../schemas.js';
 type IdParams = { Params: { id: string } };
 
 export function registerImportRoutes(app: FastifyInstance, { import: imports }: IngressTargets): void {
+  /** One level of a folder on this machine, for the folder browser; starts at the home folder. */
+  app.get<{ Querystring: { path?: string } }>(
+    '/api/imports/folders',
+    { schema: { querystring: { type: 'object', additionalProperties: false, properties: { path: { type: 'string', maxLength: 4096 } } } } },
+    async (req) => imports.browseHostFolder(req.query.path),
+  );
+
   app.post<{ Body: { path: string; albumId?: string } }>(
     '/api/imports/folder',
     { schema: { body: { type: 'object', required: ['path'], properties: { path: { type: 'string', minLength: 1, maxLength: 4096 }, albumId: { type: 'string' } } } } },
