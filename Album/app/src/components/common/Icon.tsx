@@ -15,6 +15,7 @@ const PATHS = {
   chevronDown: 'M6 9l6 6 6-6',
   arrowLeft: 'M19 12H5M12 19l-7-7 7-7',
   arrowRight: 'M5 12h14M12 5l7 7-7 7',
+  arrowUp: 'M12 19V5M5 12l7-7 7 7',
   x: 'M18 6 6 18M6 6l12 12',
   download: 'M12 3v12M7 10l5 5 5-5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4',
   trash: 'M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M6 6l1 14a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-14M10 11v6M14 11v6',

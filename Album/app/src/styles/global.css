@@ -1219,6 +1219,129 @@ textarea {
   color: #3b82f6;
 }
 
+/* import folder: the chosen path and the folder browser */
+.folder-pick {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+.folder-pick .folder-icon {
+  grid-row: auto;
+}
+.folder-chosen .field-label {
+  margin-bottom: 4px;
+}
+.folder-path {
+  color: var(--text);
+  font-weight: 500;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.folder-path.muted {
+  color: var(--muted);
+  font-weight: 400;
+}
+.folder-browser {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.folder-browser-bar {
+  display: flex;
+  gap: 8px;
+}
+.folder-crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 4px;
+  margin: 0;
+  padding: 7px 10px;
+  list-style: none;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+}
+.folder-crumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.folder-crumbs .icon {
+  color: var(--muted);
+  flex: none;
+}
+.folder-crumbs .link-btn {
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.folder-crumbs [aria-current] {
+  padding: 2px 4px;
+  color: var(--text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.folder-browser-list {
+  height: min(320px, 45vh);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.folder-browser-list:focus {
+  outline: none;
+}
+.folder-browser-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.folder-browser-list li + li {
+  border-top: 1px solid var(--border);
+}
+.folder-browser-list .loading,
+.folder-browser-empty {
+  padding: 14px 16px;
+  color: var(--muted);
+}
+.folder-browser-list .error-state {
+  padding: 32px 20px;
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+.folder-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 14px;
+  border: none;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.folder-row:hover {
+  background: var(--surface-2);
+}
+.folder-row:focus-visible {
+  outline-offset: -2px;
+}
+.folder-row .icon {
+  flex: none;
+  color: var(--accent);
+}
+.folder-row .icon:last-child {
+  margin-left: auto;
+  color: var(--muted);
+}
+.folder-row-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 /* ============ progress panel ============ */
 .progress-panel {
   position: fixed;
@@ -3166,6 +3289,10 @@ textarea {
 :root[data-theme='dark'] .callout-warn,
 :root[data-theme='dark'] .callout-ok {
   color: var(--text);
+}
+:root[data-theme='dark'] .folder-icon {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 :root[data-theme='dark'] .banner-tagline {
   color: var(--text-2);

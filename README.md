@@ -6,7 +6,7 @@ A local-first photo library that understands what is in your photos. It keeps yo
 
 ## What it does
 
-- **Imports** selected files or a whole folder. A folder becomes an album named after it. The app keeps its own copy of each photo, so the source folder can be moved or deleted afterwards.
+- **Imports** selected files or a whole folder, chosen in a folder browser instead of typing a path. A folder becomes an album named after it. The app keeps its own copy of each photo, so the source folder can be moved or deleted afterwards.
 - **Stores each photo once.** Identical bytes are recognised by SHA-256; one stored photo can belong to several albums.
 - **Reads common formats** (JPEG, PNG, WebP, GIF, BMP, TIFF, HEIC/HEIF, AVIF), identified by content rather than file extension. A file that cannot be decoded is reported and does not stop the import.
 - **Describes every photo.** A cloud vision model (DeepSeek, with OpenAI as fallback) writes a description, tags and a list of visible objects. You can edit the text; a later AI run never replaces your edit.
@@ -81,7 +81,7 @@ Set `VLLM_ENABLED=false` in `Album/.env` to run without it.
 | Path | Contents |
 | --- | --- |
 | `Album/src/` | Backend: ingress, application modules, infrastructure capabilities, data access, SQLite migrations |
-| `Album/app/` | Web app |
+| `Album/app/` | Web app; `public/legacy/folder-browser` holds a hand-written plain HTML/CSS/JS folder browser, kept for comparison with the React one |
 | `Album/api/` | Postman collection and environment |
 | `n8n/`, `baserow/`, `operaton/` | Self-hosted low-code and workflow services (Docker), the Baserow app builder script, and the review workflow with its worker |
 | `docs/` | Architecture, design notes and the decision log |

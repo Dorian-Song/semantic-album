@@ -1,0 +1,152 @@
+/* 文件夹浏览弹窗: 尺寸和间距 (width / height / padding / margin / font-size)
+   跟 Architect.css 分开写, 改大小的时候只用看这个文件
+   最后面的 @media 是小屏幕 (手机) 的规则 */
+
+/* 弹窗本体 */
+.folder-browser{
+    width: 600px;   /* 原版 .modal-dialog 的默认宽度 */
+    max-width: calc(100vw - 40px);  /* 屏幕比 600px 窄时左右各留 20px */
+    height: 560px;
+    max-height: calc(100vh - 40px); /* 屏幕矮时上下各留 20px, 多出来的靠列表自己滚动 */
+    padding: 0;     /* 浏览器给 dialog 默认加了 1em 的内边距, 去掉, 由里面各块自己控制 */
+    font-size: 14px;
+}
+
+/* 标题栏 */
+.folder-browser-header{
+    padding: 0 15px;
+    height: 56px;   /* 原版 .modal-header 的高度 */
+}
+.folder-browser-title{
+    font-size: 16px;
+    margin: 0;
+}
+.folder-browser-close{
+    font-size: 24px;
+    line-height: 1;
+    padding: 4px 8px;
+}
+
+/* 中间内容区 */
+.folder-browser-content{
+    padding: 12px 15px 0 15px;
+}
+
+.folder-browser-toolbar{
+    margin-bottom: 10px;
+}
+.folder-browser-toolbar .folder-browser-btn{
+    margin-right: 8px;  /* 两个按钮之间的间距 */
+}
+
+/* 面包屑 */
+.folder-browser-crumbs{
+    padding: 6px 8px;
+    margin-bottom: 10px;
+    min-height: 20px;   /* 还没加载出来时也占着一行, 不让下面的内容跳动 */
+}
+.crumb-link{
+    padding: 1px 4px;
+}
+.crumb-current{
+    padding: 1px 4px;
+}
+.crumb-sep{
+    margin: 0 2px;
+}
+
+/* 加载中 / 出错 提示 */
+.folder-browser-status{
+    padding: 6px 10px;
+    margin: 0 0 10px 0;
+}
+.folder-browser-status.loading:before{
+    width: 10px;
+    height: 10px;
+    border-width: 3px;
+    margin-right: 8px;  /* 圈和文字之间的距离 */
+}
+
+/* 文件夹列表 */
+.folder-browser-list{
+    min-height: 120px;  /* 弹窗被压得很矮时, 列表至少还能显示几行 */
+}
+.folder-browser .folder{
+    width: 100%;    /* 原版是固定 230px, 这里撑满列表 */
+    height: 32px;   /* 原版 28px, 稍微高一点好点 */
+    padding: 0 10px;
+}
+.folder-browser .folder_Name{
+    margin-left: 10px;  /* 文字与图标的间距 */
+}
+.folder-browser .folder_ICON{
+    width: 18px;
+    height: 13px;
+    margin-top: 3px;    /* 给上面的小耳朵留位置 */
+}
+.folder-browser .folder_ICON:before{
+    top: -3px;
+    left: 0;
+    width: 8px;
+    height: 3px;
+}
+.folder-browser-empty{
+    margin: 10px;
+}
+
+/* 图片数量和说明 */
+.folder-browser-count{
+    margin: 10px 0 4px 0;
+}
+.folder-browser-note{
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 0 0 12px 0;
+}
+
+/* 底部按钮栏 */
+.folder-browser-foot{
+    padding: 12px 15px;
+}
+.folder-browser-foot .folder-browser-btn{
+    margin-left: 8px;   /* 按钮之间的间距 */
+}
+
+/* 按钮 */
+.folder-browser-btn{
+    padding: 6px 12px;
+    font-size: 14px;
+    line-height: 1.42857143;
+}
+
+
+/* 小屏幕 (手机竖屏) */
+@media (max-width: 600px) {
+    .folder-browser{
+        width: 100vw;
+        max-width: 100vw;   /* 手机上直接铺满, 不留边 */
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+        border: 0;
+        margin: 0;
+    }
+    .folder-browser-header{
+        height: 48px;
+    }
+    .folder-browser .folder{
+        height: 40px;   /* 手指点的话行要高一点 */
+    }
+    .folder-browser-toolbar .folder-browser-btn{
+        flex: 1;        /* 两个按钮平分一行 */
+    }
+    .folder-browser-toolbar .folder-browser-btn:last-child{
+        margin-right: 0;
+    }
+    .folder-browser-foot .folder-browser-btn{
+        flex: 1;        /* 底部两个按钮也平分一行, 好点 */
+    }
+    .folder-browser-foot .folder-browser-btn:first-child{
+        margin-left: 0;
+    }
+}

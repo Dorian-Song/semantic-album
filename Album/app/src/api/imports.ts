@@ -7,6 +7,22 @@ export interface ManifestEntry {
   size: number;
 }
 
+/** One level of a folder on the machine running the backend, as the folder browser shows it. */
+export interface FolderListing {
+  path: string;
+  /** null at the filesystem root */
+  parent: string | null;
+  home: string;
+  /** Visible subfolders, in name order. */
+  folders: { name: string; path: string }[];
+  /** Supported images directly in this folder; subfolders are not counted. */
+  imageFiles: number;
+}
+
+/** Lists a host folder; without a path the backend starts at the user's home folder. */
+export const listHostFolder = (path?: string, signal?: AbortSignal) =>
+  api<FolderListing>(path ? `/api/imports/folders?path=${encodeURIComponent(path)}` : '/api/imports/folders', signal ? { signal } : {});
+
 export const listJobHistory = (limit = 8) => api<{ items: ImportJob[] }>(`/api/jobs/history?limit=${limit}`).then((r) => r.items);
 export const listJobs = () => api<{ items: ImportJob[] }>('/api/jobs').then((r) => r.items);
 export const startFolderImport = (path: string, albumId?: string) =>

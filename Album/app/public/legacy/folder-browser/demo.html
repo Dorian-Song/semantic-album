@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Folder browser demo</title>
+    <link rel="stylesheet" href="Architect.css">
+    <link rel="stylesheet" href="Responsive.css">
+    <style>
+        /* 只给这个测试页用的样式 */
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            background-color: #f0f0f0;
+            color: #282c34;
+        }
+        body.dark {
+            background-color: #1e1f22;  /* 模拟宿主页面的深色主题, 看弹窗是不是还看得清 */
+            color: #e6e6e6;
+        }
+        .demo-row {
+            display: flex;
+            flex-wrap: wrap;    /* 窄屏时按钮换行 */
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .demo-output {
+            padding: 10px;
+            border: 1px dashed #9b9b9b;
+            word-break: break-all;  /* 长路径换行 */
+        }
+        .host-dialog {
+            width: 420px;
+            max-width: calc(100vw - 40px);
+        }
+    </style>
+</head>
+<body>
+    <h1>Legacy folder browser</h1>
+
+    <div class="demo-row">
+        <button type="button" class="demo-open">Browse folders…</button>
+        <button type="button" class="demo-open-missing">Open at a missing folder</button>
+        <button type="button" class="demo-open-host">Open inside a native dialog</button>
+        <button type="button" class="demo-theme">Toggle dark page</button>
+    </div>
+
+    <p>Chosen path:</p>
+    <p class="demo-output" id="demo-output">(nothing chosen yet)</p>
+    <p>Last event: <span id="demo-event">none</span></p>
+
+    <!-- 模拟宿主应用: 一个已经用 showModal() 打开的 dialog, 从里面再打开文件夹浏览 -->
+    <dialog class="host-dialog" id="host-dialog">
+        <h2>Import photos</h2>
+        <p>Folder: <span id="host-path">(none)</span></p>
+        <button type="button" id="host-browse">Browse…</button>
+        <button type="button" id="host-close">Close</button>
+    </dialog>
+
+    <script src="folder-browser.js"></script>
+    <script>
+        // 测试页: 打开文件夹浏览弹窗, 把结果显示出来
+
+        const output = document.querySelector('#demo-output');
+        const lastEvent = document.querySelector('#demo-event');
+        const hostDialog = document.querySelector('#host-dialog');
+
+        const openBrowser = (startPath) => {
+            window.LegacyFolderBrowser.open({
+                startPath: startPath,
+                onSelect: (path) => {
+                    output.textContent = path;
+                    lastEvent.textContent = 'select';
+                },
+                onCancel: () => {
+                    lastEvent.textContent = 'cancel';
+                },
+            });
+        };
+
+        document.querySelector('.demo-open').addEventListener('click', () => openBrowser());
+        document.querySelector('.demo-open-missing').addEventListener('click', () => openBrowser('/no/such/folder'));
+        document.querySelector('.demo-theme').addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+        });
+
+        // 宿主 dialog 里的按钮
+        document.querySelector('.demo-open-host').addEventListener('click', () => hostDialog.showModal());
+        document.querySelector('#host-close').addEventListener('click', () => hostDialog.close());
+        document.querySelector('#host-browse').addEventListener('click', () => {
+            window.LegacyFolderBrowser.open({
+                onSelect: (path) => {
+                    document.querySelector('#host-path').textContent = path;
+                    output.textContent = path;
+                    lastEvent.textContent = 'select (from host dialog)';
+                },
+                onCancel: () => {
+                    lastEvent.textContent = 'cancel (from host dialog)';
+                },
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+/* 文件夹浏览弹窗: 结构和外观 (display / flex / 颜色 / 边框)
+   尺寸、间距和小屏幕规则在 Responsive.css 里
+   弹窗外壳 (modal-dialog / modal-header / modal-foot / btn) 改写自 Tangchunhai/modal 的 css/modal.css
+   https://github.com/Tangchunhai/modal/blob/master/css/modal.css
+   所有选择器都挂在 .folder-browser 下面或者带 folder-browser 前缀, 因为弹窗是直接加到宿主页面 body 里的,
+   宿主页面自己也有 .btn .btn-primary, 不加前缀两边的样式会互相串 */
+
+/* 弹窗本体 (原版的 .modal-dialog) */
+.folder-browser{
+    border: 1px solid #000000;
+    background: #ffffff;    /* 自己定背景色, 宿主页面是深色主题时文字也看得清 */
+    color: #282c34;         /* 同上, 不继承宿主页面的文字颜色 */
+    color-scheme: light;    /* 让滚动条、按钮这些浏览器自带的控件也保持浅色 */
+    border-radius: 6px;
+    box-shadow: 1px 1px 5px 5px #505050;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+    text-align: left;       /* 宿主页面如果居中对齐了, 这里改回来 */
+}
+.folder-browser[open]{
+    /* 只能给打开的 dialog 设 flex, 直接写在 .folder-browser 上会把关着的 dialog 也显示出来 */
+    display: flex;
+    flex-direction: column; /* header / content / foot 从上到下排 */
+}
+/* 原版的遮罩是一个单独的 .modal-mask div, 黑色 30% 透明; dialog 自带 ::backdrop, 直接用它 */
+.folder-browser::backdrop{
+    background: rgba(0, 0, 0, .3);
+}
+
+/* 标题栏 (原版的 .modal-header, 原版用 float 左右分开, 这里改成 flex) */
+.folder-browser-header{
+    display: flex;
+    align-items: center;    /* 标题和关闭按钮垂直居中 */
+    justify-content: space-between; /* 标题靠左, × 靠右 */
+    border-bottom: 1px solid #E5E5E5;
+    flex-shrink: 0;         /* 弹窗变矮时不要把标题栏压扁 */
+}
+.folder-browser-title{
+    font-weight: normal;
+    color: #282c34;
+}
+.folder-browser-close{
+    cursor: pointer;        /* 鼠标悬停时变为手形 */
+    font-weight: 700;
+    color: #9b9b9b;
+    background: none;
+    border: none;
+}
+.folder-browser-close:hover{
+    color: #000;
+}
+
+/* 中间内容区: 占满 header 和 foot 之间剩下的高度 */
+.folder-browser-content{
+    display: flex;
+    flex-direction: column;
+    flex: 1;                /* 撑满剩余高度, 让文件夹列表可以滚动而不是把弹窗撑高 */
+    min-height: 0;          /* flex 子项默认最小高度是内容高度, 不写这个列表的 overflow 就不生效 */
+}
+
+/* 上一级 / 主目录 */
+.folder-browser-toolbar{
+    display: flex;
+    flex-shrink: 0;
+}
+
+/* 面包屑 */
+.folder-browser-crumbs{
+    display: flex;
+    flex-wrap: wrap;        /* 路径太长时换行, 不出现横向滚动条 */
+    align-items: center;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    flex-shrink: 0;
+    word-break: break-all;  /* 特别长的单个文件夹名也要能断开 */
+}
+.crumb-link{
+    border: 0;
+    background: none;
+    color: #1772F6;
+    cursor: pointer;
+    font: inherit;          /* button 默认字体比正文小一号, 跟周围文字保持一致 */
+    border-radius: 4px;
+}
+.crumb-link:hover{
+    background-color: #3d96c0;
+    color: white;
+}
+.crumb-current{
+    font-weight: bold;      /* 当前所在的文件夹 */
+}
+.crumb-sep{
+    color: #9b9b9b;
+}
+
+/* 加载中 / 出错 提示 */
+.folder-browser-status{
+    display: flex;
+    align-items: center;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+.folder-browser-status.hidden{
+    display: none;  /* 没有消息时不占位置 */
+}
+.folder-browser-status.loading{
+    background-color: #eaf6fd;
+    color: #282c34;
+}
+.folder-browser-status.error{
+    background-color: #fdecea;
+    color: #a12622;
+    border: 1px solid #f2b8b5;
+}
+/* 转圈的小图标, 改写自 AmraniCh/vanilla-filemanager 的 src/scss/components/_loader.scss
+   https://github.com/AmraniCh/vanilla-filemanager/blob/master/src/scss/components/_loader.scss
+   原版是盖住整个表格的半透明层 + 中间 50px 的大圈, 这里只留了 :after 那个圈, 缩小放在文字前面 */
+.folder-browser-status.loading:before{
+    content: '';
+    border-style: solid;
+    border-color: #4ab8e7;
+    border-right-color: #f0f0f0;
+    border-left-color: #f0f0f0;
+    border-radius: 50%;
+    animation: folderBrowserLoader .5s linear infinite;
+    flex-shrink: 0;
+}
+/* keyframes 照抄自同一个项目编译后的 dist/filemanager-template.css 里的 loaderAnimation, 只改了名字防止重名 */
+@keyframes folderBrowserLoader {
+    from {
+        transform: rotate(-360deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 文件夹列表 */
+.folder-browser-list{
+    display: flex;
+    flex-direction: column;
+    flex: 1;                /* 占满中间剩下的高度 */
+    overflow-y: auto;       /* 文件夹多的时候只让列表自己滚动 */
+    border: 1px solid #E5E5E5;
+    border-radius: 4px;
+    background-color: #ffffff;
+}
+.folder-browser-list[aria-busy="true"]{
+    opacity: .6;            /* 加载中把旧列表变淡, 提示用户正在换文件夹 */
+}
+/* 一行文件夹, 改写自 博客园 wangjunxiang 文件资源管理器里的 .folderMenu .folder
+   https://www.cnblogs.com/wangjunxiang/p/17237008.html
+   原版是深色半透明背景上的白字, hover 变成米色字; 这里是白底, hover 改成整行变色 */
+.folder-browser .folder{
+    display: flex;
+    align-items: center;    /* 图标和名字垂直居中 */
+    overflow: hidden;
+    flex-shrink: 0;         /* 列表是 flex 竖排, 不写这个行会被压扁 */
+    border: 0;
+    border-bottom: 1px solid #f0f0f0;
+    background: none;
+    color: #282c34;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+.folder-browser .folder:hover,
+.folder-browser .folder:focus{
+    background-color: #3d96c0;
+    color: white;
+    outline: none;
+}
+.folder-browser .folder_Name{
+    white-space: nowrap;    /* 名字不换行, 太长就用省略号 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* 原版用的是 Font Awesome 的 fa-folder-closed, 我们没有引图标库, 用两个色块拼一个文件夹 */
+.folder-browser .folder_ICON{
+    position: relative;     /* 给上面的小耳朵 :before 定位用 */
+    flex-shrink: 0;
+    background-color: #f5c451;
+    border-radius: 2px;
+}
+.folder-browser .folder_ICON:before{
+    content: '';
+    position: absolute;
+    background-color: #e0a92a;
+    border-radius: 2px 2px 0 0;
+}
+.folder-browser-empty{
+    color: #9b9b9b;
+    font-style: italic;
+}
+
+/* 图片数量和说明 */
+.folder-browser-count{
+    color: #282c34;
+    flex-shrink: 0;
+}
+.folder-browser-count.empty{
+    color: #9b9b9b;
+}
+.folder-browser-note{
+    color: #626262;
+    flex-shrink: 0;
+}
+
+/* 底部按钮栏 (原版的 .modal-foot) */
+.folder-browser-foot{
+    display: flex;
+    justify-content: flex-end;  /* 按钮靠右 */
+    border-top: 1px solid #E5E5E5;
+    flex-shrink: 0;
+}
+
+/* 按钮 (原版的 .btn / .btn-default / .btn-primary, 原版本身看起来是从 Bootstrap 3 抄的)
+   改名加了 folder-browser- 前缀, 不然和宿主页面的 .btn 互相影响 */
+.folder-browser-btn{
+    display: inline-block;
+    font-weight: 400;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    color: #333;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.folder-browser-btn:hover{
+    background-color: #ebebeb;
+}
+.folder-browser-btn-primary{
+    color: #fff;
+    background-color: #3d96c0;  /* 换成了自己博客里用的蓝色, 原版是 #337ab7 */
+    border-color: #2e7fa6;
+}
+.folder-browser-btn-primary:hover{
+    background-color: #2e7fa6;
+}
+.folder-browser-btn:disabled{
+    opacity: .5;
+    cursor: not-allowed;    /* 加载中 / 到根目录时按钮不能点 */
+}
